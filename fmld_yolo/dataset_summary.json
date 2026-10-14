@@ -1,0 +1,29 @@
+{
+  "splits": {
+    "train": {
+      "incorrectly_masked_face": 1086,
+      "_images": 31304,
+      "masked_face": 22190,
+      "unmasked_face": 22070
+    },
+    "val": {
+      "incorrectly_masked_face": 118,
+      "_images": 3477,
+      "unmasked_face": 2507,
+      "masked_face": 2412
+    },
+    "test": {
+      "unmasked_face": 7435,
+      "_images": 7152,
+      "masked_face": 4929,
+      "incorrectly_masked_face": 324
+    }
+  },
+  "skipped": {
+    "skip_degenerate": 1,
+    "skip_empty_image_train": 1,
+    "skip_difficult": 11860,
+    "skip_invalid_face": 2856
+  },
+  "missing_images": {}
+}

@@ -1,0 +1,9 @@
+path: C:/Users/andika wahyu pratama/mfd/fmld_yolo
+train: images/train
+val: images/val
+test: images/test
+nc: 3
+names:
+  0: masked_face
+  1: unmasked_face
+  2: incorrectly_masked_face

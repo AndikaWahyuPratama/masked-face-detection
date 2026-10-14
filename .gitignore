@@ -1,0 +1,53 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and logs
+*.cache
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large Raw Datasets & Extracted Archives (Gigabytes)
+data/
+ann_unzip/
+*.zip
+*.tar
+*.tar.gz
+
+# Preprocessed YOLO Images & Labels (40,000+ files)
+# Keep data.yaml and dataset_summary.json!
+fmld_yolo/images/
+fmld_yolo/labels/
+
+# Raw pretrained weights & scratch weights (keep final model in paket_hasil/)
+yolov8n.pt
+weights/
+
+# Video outputs (Large binary files)
+*.avi
+*.mp4
+runs/detect/demo_webcam/
+runs/detect/demo_webcam-2/
+
+# Temporary / Aborted training runs
+runs/detect/train/
+runs/detect/train-2/
+runs/detect/train-3/
+runs/detect/fmld_v8n_e30/
+runs/**/weights/last.pt

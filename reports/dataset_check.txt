@@ -1,0 +1,6 @@
+Split | gambar | masked_face | unmasked_face | incorrectly_masked_face | % incorrectly_masked
+train | 31304 | 22190 | 22070 | 1086 | 2.39%
+val | 3477 | 2412 | 2507 | 118 | 2.34%
+test | 7152 | 4929 | 7435 | 324 | 2.55%
+
+Masalah ditemukan: 0
