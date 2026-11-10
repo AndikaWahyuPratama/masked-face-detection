@@ -29,25 +29,37 @@
 - Dengan beralih ke **YOLOv8 Small (`yolov8s.pt`)**, parameter model naik dari 3.2M ke 11.2M (3.5x lebih kaya fitur), menaikkan target akurasi mAP@50 ke **88% – 91%**.
 
 ### 2.2 Langkah Eksekusi di Terminal PowerShell
-Buka terminal PowerShell di folder repositori `mfd`, lalu jalankan:
 
-```powershell
-# 1. Pastikan PyTorch mendeteksi GPU CUDA Nvidia
-python -c "import torch; print('CUDA Ready:', torch.cuda.is_available(), '| Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-
-# 2. Jalankan pelatihan YOLOv8s (35 Epochs)
-yolo detect train `
-  data="fmld_yolo/data.yaml" `
-  model=yolov8s.pt `
-  imgsz=640 `
-  epochs=35 `
-  patience=10 `
-  batch=16 `
-  workers=4 `
-  device=0 `
-  name=fmld_v8s_e35
-```
-> **Catatan Troubleshooting VRAM:** Jika muncul pesan error `CUDA out of memory`, segera ubah parameter `batch=16` menjadi `batch=8`.
+> 🔴 **PERINGATAN KERAS – WAJIB PAKAI GPU (CUDA), JANGAN PAKAI CPU!**  
+> Dataset ini berisi **31.304 gambar pelatihan**.  
+> - **Jika menggunakan CPU:** Proses training bisa memakan waktu **berhari-hari (24–48 jam lebih)** dan komputer akan *freeze/lag* total!  
+> - **Wajib menggunakan GPU CUDA (`device=0`):** Waktu training hanya sekitar **3–4 jam** dan berjalan lancar.  
+> 
+> **Langkah 1: Verifikasi GPU Sebelum Training**  
+> Jalankan perintah ini di PowerShell:
+> ```powershell
+> python -c "import torch; print('CUDA Ready:', torch.cuda.is_available(), '| GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'TIDAK TERDETEKSI (CPU)')"
+> ```
+> * **Jika hasilnya `CUDA Ready: True`:** Berarti GPU aman, langsung lanjut ke Langkah 2.
+> * **Jika hasilnya `CUDA Ready: False`:** **JANGAN LANGSUNG TRAINING!** Pasang PyTorch CUDA terlebih dahulu dengan perintah:
+>   ```powershell
+>   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+>   ```
+> 
+> **Langkah 2: Jalankan Pelatihan dengan Akselerasi GPU (`device=0`)**  
+> ```powershell
+> yolo detect train `
+>   data="fmld_yolo/data.yaml" `
+>   model=yolov8s.pt `
+>   imgsz=640 `
+>   epochs=35 `
+>   patience=10 `
+>   batch=16 `
+>   workers=4 `
+>   device=0 `
+>   name=fmld_v8s_e35
+> ```
+> > **Catatan Troubleshooting VRAM:** Jika muncul pesan error `CUDA out of memory`, segera turunkan parameter `batch=16` menjadi `batch=8`. Jangan ubah `device=0` ke CPU!
 
 ### 2.3 Evaluasi & Ekspor Model Terbaik
 Setelah proses 35 epoch selesai:
