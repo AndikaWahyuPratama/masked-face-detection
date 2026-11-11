@@ -105,6 +105,12 @@ st.markdown("""
         color: #0F172A;
     }
     
+    /* Proteksi Tombol: Teks di dalam tombol mewarisi warna tombol sendiri (Cegah font hitam di tombol gelap) */
+    button, button p, button span, button div, [role="button"] p, [role="button"] span {
+        color: inherit !important;
+        -webkit-text-fill-color: inherit !important;
+    }
+    
     /* Label widget & form */
     [data-testid="stWidgetLabel"] label, [data-testid="stWidgetLabel"] p {
         color: #0F172A !important;
@@ -196,14 +202,27 @@ st.markdown("""
         padding: 12px !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
     }
-    div[data-testid="stCameraInput"] * {
+    div[data-testid="stCameraInput"] p, 
+    div[data-testid="stCameraInput"] span,
+    div[data-testid="stCameraInput"] label {
         color: #0F172A !important;
     }
-    div[data-testid="stCameraInput"] button {
-        background: #0F172A !important;
+    div[data-testid="stCameraInput"] button,
+    div[data-testid="stCameraInput"] button * {
+        background-color: #0F172A !important;
         color: #FFFFFF !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        border: 1px solid #0F172A !important;
+        transition: all 0.15s ease !important;
+    }
+    div[data-testid="stCameraInput"] button:hover,
+    div[data-testid="stCameraInput"] button:hover * {
+        background-color: #1E293B !important;
+        border-color: #1E293B !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }
     
     /* File Uploader */
@@ -490,35 +509,99 @@ st.markdown("""
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     }
     
-    /* Buttons Styling */
-    .stButton > button[kind="primary"] {
-        background: #0F172A !important;
-        border: 1px solid #0F172A !important;
+    /* ========================================================= */
+    /* BUTTONS DESIGN SYSTEM (WCAG AAA HIGH CONTRAST)            */
+    /* ========================================================= */
+    /* Tombol Utama (Primary): Latar Gelap Elegan + Font Putih Kontras Maksimal */
+    button[kind="primary"],
+    button[kind="primary"] *,
+    button[data-testid="baseButton-primary"],
+    button[data-testid="baseButton-primary"] *,
+    div[data-testid="stFormSubmitButton"] > button,
+    div[data-testid="stFormSubmitButton"] > button *,
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] * {
+        background-color: #0F172A !important;
+        border: 1.5px solid #0F172A !important;
         border-radius: 10px !important;
         color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
         font-weight: 700 !important;
-        padding: 8px 20px !important;
-        height: 42px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-size: 0.90rem !important;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15) !important;
         transition: all 0.15s ease !important;
     }
-    .stButton > button[kind="primary"]:hover {
-        background: #1E293B !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12) !important;
+    button[kind="primary"]:hover,
+    button[kind="primary"]:hover *,
+    button[data-testid="baseButton-primary"]:hover,
+    button[data-testid="baseButton-primary"]:hover *,
+    div[data-testid="stFormSubmitButton"] > button:hover,
+    div[data-testid="stFormSubmitButton"] > button:hover *,
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[kind="primary"]:hover * {
+        background-color: #1E293B !important;
+        border-color: #1E293B !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25) !important;
     }
-    .stButton > button[kind="secondary"] {
-        background: #FFFFFF !important;
-        border: 1px solid #CBD5E1 !important;
+    
+    /* Tombol Sekunder (Secondary): Latar Putih Bersih + Border Rapi + Font Gelap */
+    button[kind="secondary"],
+    button[kind="secondary"] *,
+    button[data-testid="baseButton-secondary"],
+    button[data-testid="baseButton-secondary"] *,
+    .stButton > button[kind="secondary"],
+    .stButton > button[kind="secondary"] * {
+        background-color: #FFFFFF !important;
+        border: 1.5px solid #CBD5E1 !important;
         border-radius: 10px !important;
         color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
         font-weight: 700 !important;
-        padding: 8px 18px !important;
-        height: 42px !important;
+        font-size: 0.90rem !important;
+        transition: all 0.15s ease !important;
     }
-    .stButton > button[kind="secondary"]:hover {
-        background: #F8FAFC !important;
+    button[kind="secondary"]:hover,
+    button[kind="secondary"]:hover *,
+    button[data-testid="baseButton-secondary"]:hover,
+    button[data-testid="baseButton-secondary"]:hover *,
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button[kind="secondary"]:hover * {
+        background-color: #F8FAFC !important;
         border-color: #94A3B8 !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Tombol Default & Icon Action (Hapus dsb) */
+    .stButton > button {
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        transition: all 0.15s ease !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-1px) !important;
+    }
+    
+    /* Tombol Aksi Hapus (Trash Icon) */
+    button[help*="Hapus"],
+    button[aria-label*="Hapus"],
+    button[aria-label*="del_"] {
+        background-color: #FEE2E2 !important;
+        border: 1px solid #FECACA !important;
+        color: #DC2626 !important;
+        -webkit-text-fill-color: #DC2626 !important;
+    }
+    button[help*="Hapus"]:hover,
+    button[aria-label*="Hapus"]:hover,
+    button[aria-label*="del_"]:hover {
+        background-color: #FCA5A5 !important;
+        border-color: #F87171 !important;
+        color: #991B1B !important;
+        -webkit-text-fill-color: #991B1B !important;
     }
 </style>
 """, unsafe_allow_html=True)
