@@ -54,13 +54,13 @@ if "streaming" not in st.session_state:
 st.markdown("""
 <style>
     /* Font 'Plus Jakarta Sans' */
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
     
     /* Global Reset - Canvas Neutral Grey */
     html, body, [class*="css"], .stApp {
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
-        background-color: #EEF0F2 !important;
-        color: #1E293B !important;
+        background-color: #F1F4F8 !important;
+        color: #0F172A !important;
     }
     
     /* Hilangkan Dekorasi Bawaan Streamlit, Tapi PERTAHANKAN Tombol Buka/Tutup Sidebar! */
@@ -69,34 +69,202 @@ st.markdown("""
         visibility: hidden !important;
     }
     
-    /* Header Streamlit dibuat transparan dan rapi agar tombol buka sidebar tetap ada */
+    /* Header Streamlit transparan */
     header[data-testid="stHeader"] {
         background: transparent !important;
         height: 2.8rem !important;
         z-index: 99 !important;
     }
     
-    /* Tombol Collapse / Expand Sidebar Diberi Styling Cantik */
+    /* Tombol Collapse / Expand Sidebar */
     [data-testid="stSidebarCollapseButton"] {
         background: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
-        color: #475569 !important;
+        color: #0F172A !important;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         transition: all 0.2s ease !important;
     }
     [data-testid="stSidebarCollapseButton"]:hover {
-        background: #F1F5F9 !important;
+        background: #F8FAFC !important;
         color: #0F172A !important;
         border-color: #94A3B8 !important;
     }
     
     .block-container {
-        padding: 0.5rem 2.5rem 2rem 2.5rem !important;
+        padding: 0.8rem 2.5rem 2.5rem 2.5rem !important;
         max-width: 1480px !important;
     }
     
-    /* 1. SIDEBAR DESIGN (Sesuai Referensi Artixel AI) */
+    /* ========================================================= */
+    /* 1. TYPOGRAPHY & HIGH-CONTRAST TEXT OVERRIDES (ANTI-BLIND) */
+    /* ========================================================= */
+    p, span, div, label, h1, h2, h3, h4, h5, h6 {
+        color: #0F172A;
+    }
+    
+    /* Label widget & form */
+    [data-testid="stWidgetLabel"] label, [data-testid="stWidgetLabel"] p {
+        color: #0F172A !important;
+        font-weight: 700 !important;
+        font-size: 0.86rem !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Input Text & Textarea */
+    input, textarea, [data-baseweb="input"] input {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        background-color: #FFFFFF !important;
+        font-weight: 500 !important;
+        font-size: 0.88rem !important;
+    }
+    input::placeholder, textarea::placeholder {
+        color: #94A3B8 !important;
+        -webkit-text-fill-color: #94A3B8 !important;
+        font-weight: 400 !important;
+    }
+    div[data-baseweb="input"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-baseweb="input"]:focus-within {
+        border-color: #0F172A !important;
+        box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.12) !important;
+    }
+    
+    /* Selectbox & Dropdown Popover */
+    div[data-baseweb="select"] {
+        background-color: #FFFFFF !important;
+        border-radius: 10px !important;
+    }
+    div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+    }
+    div[data-baseweb="select"] * {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        font-weight: 600 !important;
+    }
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+    }
+    li[role="option"], div[role="option"] {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        background-color: #FFFFFF !important;
+        font-size: 0.86rem !important;
+        font-weight: 500 !important;
+        padding: 9px 14px !important;
+    }
+    li[role="option"]:hover, div[role="option"]:hover, li[aria-selected="true"] {
+        background-color: #F1F5F9 !important;
+        color: #0F172A !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Tabs Component (Pilihan Kamera vs File) */
+    button[data-baseweb="tab"] {
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 0.88rem !important;
+        padding: 10px 16px !important;
+    }
+    button[data-baseweb="tab"]:hover {
+        color: #0F172A !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #0F172A !important;
+        font-weight: 800 !important;
+        border-bottom: 2px solid #0F172A !important;
+    }
+    
+    /* Camera Input Styling */
+    div[data-testid="stCameraInput"] {
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 14px !important;
+        background: #FFFFFF !important;
+        padding: 12px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+    }
+    div[data-testid="stCameraInput"] * {
+        color: #0F172A !important;
+    }
+    div[data-testid="stCameraInput"] button {
+        background: #0F172A !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    
+    /* File Uploader */
+    div[data-testid="stFileUploader"] section {
+        background-color: #FFFFFF !important;
+        border: 1.5px dashed #CBD5E1 !important;
+        border-radius: 12px !important;
+    }
+    div[data-testid="stFileUploader"] * {
+        color: #0F172A !important;
+    }
+    div[data-testid="stFileUploader"] small {
+        color: #64748B !important;
+    }
+    
+    /* Sliders & Ticks */
+    div[data-testid="stSlider"] label {
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="stSlider"] * {
+        color: #0F172A !important;
+    }
+    
+    /* Expanders */
+    [data-testid="stExpander"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #0F172A !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stExpander"] summary * {
+        color: #0F172A !important;
+    }
+    
+    /* Dataframe Table High Contrast */
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        background: #FFFFFF !important;
+    }
+    div[data-testid="stDataFrame"] * {
+        color: #0F172A !important;
+        font-size: 0.84rem !important;
+    }
+    
+    /* Captions & Alerts */
+    div[data-testid="stCaptionContainer"] p {
+        color: #64748B !important;
+    }
+    .stAlert p {
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }
+    
+    /* ========================================================= */
+    /* 2. SIDEBAR DESIGN SYSTEM                                  */
+    /* ========================================================= */
     [data-testid="stSidebar"] {
         background-color: #F8FAFC !important;
         border-right: 1px solid #E2E8F0 !important;
@@ -116,14 +284,14 @@ st.markdown("""
     .brand-logo-squircle {
         width: 38px;
         height: 38px;
-        background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #FFFFFF;
         font-size: 1.25rem;
-        box-shadow: 0 4px 10px rgba(234, 88, 12, 0.25);
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
     }
     .brand-text {
         font-weight: 800;
@@ -134,8 +302,8 @@ st.markdown("""
     
     .nav-category {
         font-size: 0.72rem;
-        font-weight: 700;
-        color: #94A3B8;
+        font-weight: 800;
+        color: #64748B;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         padding: 10px 8px 6px 8px;
@@ -143,7 +311,7 @@ st.markdown("""
     
     /* Radio Nav Items Styling */
     div[data-testid="stRadio"] > div {
-        gap: 4px !important;
+        gap: 5px !important;
     }
     div[data-testid="stRadio"] input {
         display: none !important;
@@ -154,9 +322,6 @@ st.markdown("""
     div[data-testid="stRadio"] label {
         padding: 10px 14px !important;
         border-radius: 10px !important;
-        font-weight: 500 !important;
-        font-size: 0.90rem !important;
-        color: #475569 !important;
         cursor: pointer !important;
         transition: all 0.15s ease !important;
         display: flex !important;
@@ -165,16 +330,25 @@ st.markdown("""
         border: 1px solid transparent !important;
         margin: 0 !important;
     }
+    div[data-testid="stRadio"] label p, div[data-testid="stRadio"] label span {
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 0.90rem !important;
+    }
     div[data-testid="stRadio"] label:hover {
-        background: #EDF0F3 !important;
+        background: #EDF2F7 !important;
+    }
+    div[data-testid="stRadio"] label:hover p {
         color: #0F172A !important;
     }
     div[data-testid="stRadio"] label:has(input:checked) {
         background: #FFFFFF !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    div[data-testid="stRadio"] label:has(input:checked) p {
         color: #0F172A !important;
-        font-weight: 600 !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-        border: 1px solid #E2E8F0 !important;
+        font-weight: 800 !important;
     }
     
     /* User Profile Pill at Bottom */
@@ -192,9 +366,9 @@ st.markdown("""
     .profile-avatar {
         width: 34px;
         height: 34px;
-        background: #FEF3C7;
-        color: #B45309;
-        font-weight: 700;
+        background: #DCFCE7;
+        color: #15803D;
+        font-weight: 800;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -202,17 +376,18 @@ st.markdown("""
         font-size: 0.85rem;
     }
     
-    /* 2. MAIN WORKSPACE CONTAINER (Floating Pure White Sheet) */
+    /* ========================================================= */
+    /* 3. MAIN WORKSPACE CONTAINER                               */
+    /* ========================================================= */
     .main-workspace {
         background: #FFFFFF;
         border-radius: 20px;
-        box-shadow: 0 8px 30px -5px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
         border: 1px solid #E2E8F0;
-        padding: 28px 34px 34px 34px;
+        padding: 26px 32px 32px 32px;
         margin-top: 4px;
     }
     
-    /* Header Section */
     .workspace-header {
         display: flex;
         align-items: center;
@@ -222,7 +397,7 @@ st.markdown("""
         border-bottom: 1px solid #F1F5F9;
     }
     .ws-title {
-        font-size: 1.5rem;
+        font-size: 1.55rem;
         font-weight: 800;
         color: #0F172A;
         letter-spacing: -0.02em;
@@ -230,40 +405,28 @@ st.markdown("""
     }
     .ws-sub {
         font-size: 0.88rem;
-        color: #64748B;
+        color: #475569;
         margin-top: 4px;
     }
     
     .status-badge {
         background: #F8FAFC;
-        border: 1px solid #E2E8F0;
+        border: 1px solid #CBD5E1;
         border-radius: 8px;
         padding: 6px 14px;
         font-size: 0.80rem;
-        font-weight: 600;
-        color: #475569;
+        font-weight: 700;
+        color: #0F172A;
         display: inline-flex;
         align-items: center;
         gap: 6px;
     }
     
-    /* 3. TOOLBAR CONTROLS BAR */
-    .toolbar-container {
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 12px 16px;
-        margin-bottom: 18px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    /* 4. DASHED VIEWPORT CONTAINER (Sesuai Referensi Artixel AI) */
+    /* Dashed Viewport Container */
     .studio-viewport {
-        border: 2px dashed #E2E8F0;
+        border: 2px dashed #CBD5E1;
         border-radius: 18px;
-        background: #FAFAFC;
+        background: #F8FAFC;
         min-height: 420px;
         display: flex;
         flex-direction: column;
@@ -274,7 +437,7 @@ st.markdown("""
         transition: border-color 0.2s ease;
     }
     .studio-viewport:hover {
-        border-color: #CBD5E1;
+        border-color: #94A3B8;
     }
     .studio-squircle {
         width: 58px;
@@ -290,10 +453,10 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
     }
     
-    /* 5. SIDE ANALYTICS TILES */
+    /* Side Analytics & Tiles */
     .side-panel-header {
         font-size: 0.72rem;
-        font-weight: 700;
+        font-weight: 800;
         color: #64748B;
         text-transform: uppercase;
         letter-spacing: 0.07em;
@@ -325,43 +488,35 @@ st.markdown("""
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     }
     
-    /* Button & Input Overrides */
-    div[data-baseweb="input"], div[data-baseweb="select"] > div {
-        background-color: #FFFFFF !important;
-        border: 1px solid #CBD5E1 !important;
-        border-radius: 10px !important;
-        color: #0F172A !important;
-    }
-    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"] > div:focus-within {
-        border-color: #0F172A !important;
-        box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08) !important;
-    }
-    
+    /* Buttons Styling */
     .stButton > button[kind="primary"] {
         background: #0F172A !important;
         border: 1px solid #0F172A !important;
         border-radius: 10px !important;
         color: #FFFFFF !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         padding: 8px 20px !important;
         height: 42px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.15s ease !important;
     }
     .stButton > button[kind="primary"]:hover {
         background: #1E293B !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12) !important;
     }
     .stButton > button[kind="secondary"] {
         background: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
+        border: 1px solid #CBD5E1 !important;
         border-radius: 10px !important;
-        color: #475569 !important;
-        font-weight: 600 !important;
+        color: #0F172A !important;
+        font-weight: 700 !important;
         padding: 8px 18px !important;
         height: 42px !important;
     }
     .stButton > button[kind="secondary"]:hover {
         background: #F8FAFC !important;
-        color: #0F172A !important;
+        border-color: #94A3B8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -788,8 +943,7 @@ elif "Registrasi Anggota" in nav_selection:
                         else:
                             st.markdown("👤")
                     with u_c2:
-                        st.markdown(f"**{u['name']}**")
-                        st.caption(f"ID: `{u['identifier']}` • {u['role']}")
+                        st.markdown(f"<div style='font-weight:700; font-size:0.90rem; color:#0F172A;'>{u['name']}</div><div style='font-size:0.75rem; color:#475569; font-weight:500;'>NIM: <code style='color:#0F172A; background:#E2E8F0; padding:1px 4px; border-radius:4px;'>{u['identifier']}</code> • {u['role']}</div>", unsafe_allow_html=True)
                     with u_c3:
                         if st.button("🗑️", key=f"del_{u['id']}", help=f"Hapus {u['name']}"):
                             db_manager.delete_user(u["id"])
