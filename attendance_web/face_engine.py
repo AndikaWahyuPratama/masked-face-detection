@@ -269,10 +269,10 @@ class FaceEngine:
             
             # Pengenalan Biometrik Wajah dengan Dynamic Adaptive Threshold
             # Saat memakai masker, 50% area wajah bawah tertutup kain sehingga jarak FaceNet bergeser ~0.15.
-            # Threshold diadaptasi dinamis: 0.48 saat tanpa masker, 0.66 saat bermasker agar nama tetap terdeteksi.
+            # Threshold diadaptasi dinamis: 0.48 saat tanpa masker, 0.68 saat bermasker agar nama tetap terdeteksi akurat.
             effective_dist_thresh = distance_threshold
             if cls_id in (0, 2):  # masked_face / incorrectly_masked_face
-                effective_dist_thresh = max(distance_threshold, 0.66)
+                effective_dist_thresh = max(distance_threshold, 0.68)
 
             q_emb = self.extract_embedding_from_crop(face_crop)
             matched_user, match_dist = self.match_face(q_emb, registered_users, distance_threshold=effective_dist_thresh)
