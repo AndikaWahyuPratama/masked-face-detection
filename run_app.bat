@@ -1,18 +1,13 @@
 @echo off
-title Smart Face Attendance & Mask Compliance System (MFD Vision 60FPS)
+setlocal
 cd /d "%~dp0"
 echo ======================================================================
-echo    🚀 SISTEM ABSENSI CERDAS & MASKED FACE DETECTION (MFD)
-echo    Deep Learning: YOLOv8 MFD + FaceNet InceptionResnetV1 (CUDA)
-echo    Engine: Flask Web REST API + Modern Responsive JS/Tailwind UI
+echo    SMART FACE ATTENDANCE ^& MASK COMPLIANCE SYSTEM
+echo    Deep Learning: YOLOv8 MFD + FaceNet (Streamlit Engine)
 echo ======================================================================
 echo.
-echo [*] Sedang memuat model AI ke GPU CUDA (membutuhkan waktu ~10 detik)...
-echo [*] Browser kamu akan otomatis terbuka setelah server siap!
+echo Sedang membuka aplikasi Streamlit...
+echo Web browser akan otomatis terbuka dalam beberapa detik.
 echo.
-
-"C:\Users\Muhammad Lukman\AppData\Local\Programs\Python\Python310\python.exe" -u attendance_web\server.py
-
-echo.
-echo Server telah dimatikan.
+echo. | "C:\Users\Muhammad Lukman\AppData\Local\Programs\Python\Python310\python.exe" -m streamlit run attendance_web/app.py --browser.gatherUsageStats=false
 pause

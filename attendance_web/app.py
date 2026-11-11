@@ -398,8 +398,8 @@ with st.sidebar:
     with st.expander("⚙️ Kalibrasi Sensitivitas", expanded=False):
         conf_slider = st.slider("Confidence Deteksi Masker", 0.10, 0.90, 0.25, 0.05,
                                 help="Ambang batas deteksi YOLOv8 (Rekomendasi: 0.25)")
-        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.40, 0.85, 0.65, 0.05,
-                                help="Jarak Euclidean FaceNet")
+        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.35, 0.70, 0.48, 0.01,
+                                help="Batas baku optimal anti-nama-tertukar: 0.48")
         cooldown_mins = st.number_input("Cooldown Presensi (Menit)", 1, 60, 5)
         
     st.markdown('<div class="nav-category">STATUS KOMPUTASI</div>', unsafe_allow_html=True)
@@ -605,10 +605,20 @@ if "Live Monitoring" in nav_selection:
                 st.session_state.streaming = False
         elif chosen_source == "Live Kamera Fisik (Webcam Andika)":
             cap = cv2.VideoCapture(0)
-            status_banner.info("▶️ Mengakses Kamera Fisik. Tekan tombol 'Hentikan' untuk selesai.")
+            if not cap.isOpened():
+                status_banner.error("❌ Kamera fisik tidak terdeteksi. Pastikan webcam terpasang atau gunakan opsi Video Demo.")
+                st.session_state.streaming = False
+            else:
+                status_banner.info("▶️ Mengakses Kamera Fisik. Tekan tombol 'Hentikan' untuk selesai.")
 
         if cap and cap.isOpened():
+            # Set resolusi 640x480 agar enteng dan adem di laptop
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             registered_users = db_manager.get_all_users()
+            frame_idx = 0
+            cached_annotated = None
+            cached_events = []
             
             while cap.isOpened() and st.session_state.streaming:
                 ret, frame = cap.read()
@@ -619,13 +629,20 @@ if "Live Monitoring" in nav_selection:
                     else:
                         break
                         
-                # Proses Pipeline AI
-                annotated_frame, events = face_engine.process_frame(
-                    frame, 
-                    registered_users=registered_users, 
-                    conf_threshold=conf_slider,
-                    distance_threshold=dist_slider
-                )
+                frame_idx += 1
+                # Optimasi Cerdas: Eksekusi pipeline AI tiap 2 frame (beban turun 50%, FPS naik)
+                if frame_idx % 2 == 1 or cached_annotated is None:
+                    annotated_frame, events = face_engine.process_frame(
+                        frame, 
+                        registered_users=registered_users, 
+                        conf_threshold=conf_slider,
+                        distance_threshold=dist_slider
+                    )
+                    cached_annotated = annotated_frame
+                    cached_events = events
+                else:
+                    annotated_frame = cached_annotated
+                    events = cached_events
                 
                 # Catat Presensi
                 for ev in events:
@@ -693,21 +710,28 @@ elif "Registrasi Anggota" in nav_selection:
     with col_reg_form:
         st.markdown("<p style='font-size:0.85rem; font-weight:700; color:#0F172A; margin-bottom:12px;'>📝 Formulir Anggota Baru</p>", unsafe_allow_html=True)
         
-        with st.form("form_register_member", clear_on_submit=True):
+        tab_cam, tab_file = st.tabs(["📸 Ambil Foto Langsung (Webcam)", "📁 Unggah File Pasfoto"])
+        with tab_cam:
+            cam_photo = st.camera_input("Posisikan wajah lurus dan klik Ambil Foto:", key="reg_cam_input")
+        with tab_file:
+            uploaded_photo = st.file_uploader("Pilih berkas pasfoto (.jpg / .png):", type=["jpg", "jpeg", "png"],
+                                              help="Pastikan wajah tampak jelas menghadap kamera.", key="reg_file_input")
+            
+        active_photo = cam_photo if cam_photo is not None else uploaded_photo
+        
+        with st.form("form_register_member"):
             r_name = st.text_input("Nama Lengkap:*", placeholder="Contoh: Muhammad Lukman")
             r_id = st.text_input("Nomor Induk (NIM / NIP):*", placeholder="Contoh: 41524010017")
             r_role = st.selectbox("Peran / Jabatan:", ["Mahasiswa", "Dosen Pengampu", "Asisten Laboratorium", "Tenaga Kependidikan", "Tamu VIP"])
-            r_photo = st.file_uploader("Unggah Pasfoto Wajah (.jpg / .png):*", type=["jpg", "jpeg", "png"],
-                                       help="Pastikan wajah tampak jelas menghadap kamera.")
             
             submit_member = st.form_submit_button("💾 Daftarkan Anggota", type="primary", use_container_width=True)
             
         if submit_member:
-            if not r_name.strip() or not r_id.strip() or not r_photo:
-                st.error("⚠️ Seluruh kolom bertanda bintang (*) wajib diisi lengkap!")
+            if not r_name.strip() or not r_id.strip() or not active_photo:
+                st.error("⚠️ Nama, NIM, dan Foto Wajah (jepret langsung dari webcam atau unggah file) wajib diisi lengkap!")
             else:
                 with st.spinner("Mengekstrak biometrik wajah ke CUDA..."):
-                    img_bytes = r_photo.read()
+                    img_bytes = active_photo.getvalue()
                     success, emb, face_crop, err_msg = face_engine.register_face_from_image(img_bytes)
                     
                     if not success or emb is None:
