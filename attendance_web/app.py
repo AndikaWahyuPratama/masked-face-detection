@@ -534,81 +534,100 @@ st.markdown("""
     /* ========================================================= */
     /* BUTTONS DESIGN SYSTEM (WCAG AAA HIGH CONTRAST)            */
     /* ========================================================= */
-    /* Tombol Utama (Primary): Latar Gelap Elegan + Font Putih Kontras Maksimal */
-    button[kind="primary"],
-    button[kind="primary"] *,
-    button[data-testid="baseButton-primary"],
-    button[data-testid="baseButton-primary"] *,
-    div[data-testid="stFormSubmitButton"] > button,
-    div[data-testid="stFormSubmitButton"] > button *,
-    .stButton > button[kind="primary"],
-    .stButton > button[kind="primary"] * {
-        background-color: #0F172A !important;
-        border: 1.5px solid #0F172A !important;
-        border-radius: 10px !important;
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-        font-weight: 700 !important;
-        font-size: 0.90rem !important;
-        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15) !important;
-        transition: all 0.15s ease !important;
-    }
-    button[kind="primary"]:hover,
-    button[kind="primary"]:hover *,
-    button[data-testid="baseButton-primary"]:hover,
-    button[data-testid="baseButton-primary"]:hover *,
-    div[data-testid="stFormSubmitButton"] > button:hover,
-    div[data-testid="stFormSubmitButton"] > button:hover *,
-    .stButton > button[kind="primary"]:hover,
-    .stButton > button[kind="primary"]:hover * {
-        background-color: #1E293B !important;
-        border-color: #1E293B !important;
-        color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25) !important;
+    /* Base reset untuk seluruh tombol agar rapi, padat & presisi sejajar */
+    .stButton, div[data-testid="stFormSubmitButton"] {
+        display: flex !important;
+        align-items: center !important;
     }
     
-    /* Tombol Sekunder (Secondary): Latar Putih Bersih + Border Rapi + Font Gelap */
+    .stButton > button,
+    div[data-testid="stFormSubmitButton"] > button {
+        border-radius: 10px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        padding: 0 18px !important;
+        font-weight: 700 !important;
+        font-size: 0.88rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.15s ease !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* KUNCI PENTING: Bersihkan elemen anak di dalam tombol (Cegah box-in-a-box / double border) */
+    .stButton > button *,
+    div[data-testid="stFormSubmitButton"] > button * {
+        border: none !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: normal !important;
+    }
+    
+    /* 1. Tombol Utama (Primary): Navy Slate Elegan + Font Putih Bersih */
+    button[kind="primary"],
+    button[data-testid="baseButton-primary"],
+    div[data-testid="stFormSubmitButton"] > button,
+    .stButton > button[kind="primary"] {
+        background-color: #0F172A !important;
+        border: 1.5px solid #0F172A !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.12) !important;
+    }
+    button[kind="primary"] *,
+    button[data-testid="baseButton-primary"] *,
+    div[data-testid="stFormSubmitButton"] > button *,
+    .stButton > button[kind="primary"] * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
+    button[kind="primary"]:hover,
+    button[data-testid="baseButton-primary"]:hover,
+    div[data-testid="stFormSubmitButton"] > button:hover,
+    .stButton > button[kind="primary"]:hover {
+        background-color: #1E293B !important;
+        border-color: #1E293B !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22) !important;
+    }
+    
+    /* 2. Tombol Sekunder (Secondary / Hentikan / Reset Filter): Latar Putih Bersih + 1 Border Rapi */
     button[kind="secondary"],
-    button[kind="secondary"] *,
     button[data-testid="baseButton-secondary"],
-    button[data-testid="baseButton-secondary"] *,
     .stButton > button[kind="secondary"],
-    .stButton > button[kind="secondary"] * {
+    .stButton > button:not([kind="primary"]) {
         background-color: #FFFFFF !important;
         border: 1.5px solid #CBD5E1 !important;
-        border-radius: 10px !important;
         color: #0F172A !important;
         -webkit-text-fill-color: #0F172A !important;
-        font-weight: 700 !important;
-        font-size: 0.90rem !important;
-        transition: all 0.15s ease !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    }
+    button[kind="secondary"] *,
+    button[data-testid="baseButton-secondary"] *,
+    .stButton > button[kind="secondary"] *,
+    .stButton > button:not([kind="primary"]) * {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
     }
     button[kind="secondary"]:hover,
-    button[kind="secondary"]:hover *,
     button[data-testid="baseButton-secondary"]:hover,
-    button[data-testid="baseButton-secondary"]:hover *,
     .stButton > button[kind="secondary"]:hover,
-    .stButton > button[kind="secondary"]:hover * {
+    .stButton > button:not([kind="primary"]):hover {
         background-color: #F8FAFC !important;
         border-color: #94A3B8 !important;
         color: #0F172A !important;
         -webkit-text-fill-color: #0F172A !important;
         transform: translateY(-1px) !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
     }
 
-    /* Tombol Default & Icon Action (Hapus dsb) */
-    .stButton > button {
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        transition: all 0.15s ease !important;
-    }
-    .stButton > button:hover {
-        transform: translateY(-1px) !important;
-    }
-    
-    /* Tombol Aksi Hapus (Trash Icon) */
+    /* 3. Tombol Hapus (Trash Icon Action) */
     button[help*="Hapus"],
     button[aria-label*="Hapus"],
     button[aria-label*="del_"] {
@@ -616,6 +635,11 @@ st.markdown("""
         border: 1px solid #FECACA !important;
         color: #DC2626 !important;
         -webkit-text-fill-color: #DC2626 !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0 !important;
+        border-radius: 8px !important;
     }
     button[help*="Hapus"]:hover,
     button[aria-label*="Hapus"]:hover,
@@ -624,6 +648,7 @@ st.markdown("""
         border-color: #F87171 !important;
         color: #991B1B !important;
         -webkit-text-fill-color: #991B1B !important;
+        transform: scale(1.05) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1110,14 +1135,14 @@ elif "Riwayat Presensi" in nav_selection:
         </div>
     """, unsafe_allow_html=True)
     
-    f_c1, f_c2, f_c3 = st.columns([3, 3, 4], gap="medium")
+    f_c1, f_c2, f_c3 = st.columns([4, 4, 2.8], gap="medium")
     with f_c1:
         f_date = st.date_input("Filter Berdasarkan Tanggal:", value=None)
     with f_c2:
         f_comp = st.selectbox("Status Kepatuhan:", ["Semua", "PATUH", "MELANGGAR"])
     with f_c3:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        reset_filter = st.button("🔄 Reset Filter", use_container_width=True)
+        st.markdown("<label style='font-size: 0.86rem; font-weight: 700; color: #0F172A; display: block; margin-bottom: 4px;'>Tindakan Filter:</label>", unsafe_allow_html=True)
+        reset_filter = st.button("🔄 Reset Filter", type="secondary", use_container_width=True)
         if reset_filter:
             f_date = None
             f_comp = "Semua"
