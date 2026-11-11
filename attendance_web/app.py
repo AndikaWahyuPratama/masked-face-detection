@@ -225,17 +225,39 @@ st.markdown("""
         -webkit-text-fill-color: #FFFFFF !important;
     }
     
-    /* File Uploader */
+    /* File Uploader Modern Clean Styling */
+    div[data-testid="stFileUploader"] {
+        margin-bottom: 10px !important;
+    }
     div[data-testid="stFileUploader"] section {
-        background-color: #FFFFFF !important;
+        background-color: #F8FAFC !important;
         border: 1.5px dashed #CBD5E1 !important;
         border-radius: 12px !important;
+        padding: 20px 16px !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stFileUploader"] section:hover {
+        border-color: #0F172A !important;
+        background-color: #F1F5F9 !important;
     }
     div[data-testid="stFileUploader"] * {
         color: #0F172A !important;
     }
     div[data-testid="stFileUploader"] small {
         color: #64748B !important;
+    }
+    div[data-testid="stFileUploader"] button {
+        background-color: #FFFFFF !important;
+        border: 1.5px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        color: #0F172A !important;
+        font-weight: 700 !important;
+        padding: 6px 14px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    }
+    div[data-testid="stFileUploader"] button:hover {
+        background-color: #F1F5F9 !important;
+        border-color: #94A3B8 !important;
     }
     
     /* Sliders & Ticks */
@@ -934,17 +956,28 @@ elif "Registrasi Anggota" in nav_selection:
     col_reg_form, col_reg_dir = st.columns([5, 5], gap="large")
     
     with col_reg_form:
-        st.markdown("<p style='font-size:0.85rem; font-weight:700; color:#0F172A; margin-bottom:12px;'>📝 Formulir Anggota Baru</p>", unsafe_allow_html=True)
-        st.info("💡 **Tips Akurasi Presisi:** Disarankan mengambil foto **Wajah Normal (Tanpa Masker)**. Sistem AI otomatis mengaktifkan *Synthetic Mask Augmentation* (Dual-Template) sehingga anggota langsung dikenali baik saat bermasker maupun saat melepas masker.")
+        st.markdown("<p style='font-size:0.88rem; font-weight:700; color:#0F172A; margin-bottom:10px;'>📝 Formulir Anggota Baru</p>", unsafe_allow_html=True)
+        st.info("💡 **Tips Akurasi:** Unggah pasfoto **Wajah Normal (Tanpa Masker)**. Sistem AI otomatis mengaktifkan *Synthetic Mask Augmentation* (Dual-Template) sehingga anggota langsung dikenali baik saat bermasker maupun saat melepas masker.")
         
-        tab_cam, tab_file = st.tabs(["📸 Ambil Foto Langsung (Webcam)", "📁 Unggah File Pasfoto"])
-        with tab_cam:
-            cam_photo = st.camera_input("Posisikan wajah lurus dan klik Ambil Foto:", key="reg_cam_input")
-        with tab_file:
-            uploaded_photo = st.file_uploader("Pilih berkas pasfoto (.jpg / .png):", type=["jpg", "jpeg", "png"],
-                                              help="Pastikan wajah tampak jelas menghadap kamera.", key="reg_file_input")
-            
-        active_photo = cam_photo if cam_photo is not None else uploaded_photo
+        uploaded_photo = st.file_uploader(
+            "Pilih Berkas Pasfoto Wajah (.jpg, .jpeg, .png):", 
+            type=["jpg", "jpeg", "png"],
+            help="Disarankan pasfoto wajah jelas menghadap ke depan dengan pencahayaan terang.", 
+            key="reg_file_input"
+        )
+        
+        if uploaded_photo is not None:
+            c_prev1, c_prev2 = st.columns([1, 3])
+            with c_prev1:
+                st.image(uploaded_photo, width=95, caption="Preview Pasfoto")
+            with c_prev2:
+                st.markdown(f"""
+                <div style='font-size:0.80rem; color:#475569; padding-top:8px;'>
+                    <div style='font-weight:700; color:#0F172A; margin-bottom:2px;'>📁 {uploaded_photo.name}</div>
+                    <div>Ukuran: <b>{uploaded_photo.size / 1024:.1f} KB</b></div>
+                    <div style='color:#10B981; font-weight:600; margin-top:4px;'>● Berkas siap diekstrak biometrik FaceNet</div>
+                </div>
+                """, unsafe_allow_html=True)
         
         with st.form("form_register_member"):
             r_name = st.text_input("Nama Lengkap:*", placeholder="Contoh: Muhammad Lukman")
@@ -954,11 +987,11 @@ elif "Registrasi Anggota" in nav_selection:
             submit_member = st.form_submit_button("💾 Daftarkan Anggota", type="primary", use_container_width=True)
             
         if submit_member:
-            if not r_name.strip() or not r_id.strip() or not active_photo:
-                st.error("⚠️ Nama, NIM, dan Foto Wajah (jepret langsung dari webcam atau unggah file) wajib diisi lengkap!")
+            if not r_name.strip() or not r_id.strip() or not uploaded_photo:
+                st.error("⚠️ Nama, NIM, dan Berkas Pasfoto Wajah wajib diisi lengkap!")
             else:
                 with st.spinner("Mengekstrak biometrik wajah ke CUDA..."):
-                    img_bytes = active_photo.getvalue()
+                    img_bytes = uploaded_photo.getvalue()
                     success, emb, face_crop, err_msg = face_engine.register_face_from_image(img_bytes)
                     
                     if not success or emb is None:
@@ -992,7 +1025,7 @@ elif "Registrasi Anggota" in nav_selection:
                             st.error(f"❌ Gagal Simpan Database: {msg_db}")
 
     with col_reg_dir:
-        st.markdown("<p style='font-size:0.85rem; font-weight:700; color:#0F172A; margin-bottom:12px;'>📋 Direktori Anggota Terverifikasi</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size:0.88rem; font-weight:700; color:#0F172A; margin-bottom:10px;'>📋 Direktori Anggota Terverifikasi</p>", unsafe_allow_html=True)
         users_list = db_manager.get_all_users()
         
         if not users_list:
@@ -1037,24 +1070,15 @@ elif "Registrasi Anggota" in nav_selection:
                     
                     # Fitur Tambah / Update Foto Biometrik (Face ID Enrichment)
                     with st.expander(f"➕ Tambah / Update Foto Wajah ({u['name']})", expanded=False):
-                        st.caption("Tambahkan foto wajah kondisi lain (misal: foto tanpa masker jika sebelumnya baru daftar foto masker).")
-                        sub_cam, sub_up = st.tabs(["📸 Kamera", "📁 Upload"])
-                        add_photo = None
-                        with sub_cam:
-                            c_p = st.camera_input("Ambil foto tambahan:", key=f"add_cam_{u['id']}")
-                            if c_p:
-                                add_photo = c_p
-                        with sub_up:
-                            u_p = st.file_uploader("Unggah foto tambahan:", type=["jpg", "png", "jpeg"], key=f"add_file_{u['id']}")
-                            if u_p:
-                                add_photo = u_p
-                                
+                        st.caption("Unggah foto wajah kondisi lain (misal: pasfoto normal jika sebelumnya baru daftar foto masker).")
+                        u_p = st.file_uploader(f"Pilih file foto tambahan ({u['name']}):", type=["jpg", "png", "jpeg"], key=f"add_file_{u['id']}")
+                        
                         if st.button(f"💾 Simpan Template Tambahan", key=f"btn_add_emb_{u['id']}", type="primary"):
-                            if not add_photo:
-                                st.warning("Silakan ambil foto lewat kamera atau unggah file terlebih dahulu.")
+                            if not u_p:
+                                st.warning("Silakan pilih berkas foto terlebih dahulu.")
                             else:
                                 with st.spinner("Mengekstrak fitur biometrik tambahan..."):
-                                    suc, new_e, new_crop, m = face_engine.register_face_from_image(add_photo.getvalue())
+                                    suc, new_e, new_crop, m = face_engine.register_face_from_image(u_p.getvalue())
                                     if suc and new_e is not None:
                                         db_manager.append_user_embedding(u["id"], new_e)
                                         st.success(f"🎉 Sukses! {u['name']} sekarang memiliki template biometrik lengkap.")
@@ -1062,6 +1086,8 @@ elif "Registrasi Anggota" in nav_selection:
                                         st.rerun()
                                     else:
                                         st.error(f"Gagal ekstrak: {m}")
+                                        
+                    st.markdown("<hr style='margin: 8px 0; border: none; border-top: 1px solid #F1F5F9;'>", unsafe_allow_html=True)
                                         
                     st.markdown("<hr style='margin: 8px 0; border: none; border-top: 1px solid #F1F5F9;'>", unsafe_allow_html=True)
                     
