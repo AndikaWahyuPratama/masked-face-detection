@@ -6,3 +6,4 @@ echo ======================================================================
 echo.
 "C:\Users\Muhammad Lukman\AppData\Local\Programs\Python\Python310\python.exe" -m streamlit run attendance_web/app.py
 pause
+

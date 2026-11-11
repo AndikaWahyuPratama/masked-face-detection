@@ -78,44 +78,78 @@ class CameraStream:
         self.is_running = True
         self.lock = threading.Lock()
         self.fps = 0.0
+        self.has_physical_camera = False
+        self._load_fallback_demo_frame()
         self.thread = threading.Thread(target=self._capture_thread_worker, daemon=True)
         self.thread.start()
 
+    def _load_fallback_demo_frame(self):
+        """Memuat citra fallback jika laptop tidak memiliki kamera fisik aktif."""
+        demo_candidates = [
+            CURRENT_DIR.parent / "demo_in" / "test_00001090.jpg",
+            CURRENT_DIR.parent / "demo_in" / "test_00001301.jpg"
+        ]
+        for p in demo_candidates:
+            if p.exists():
+                img = cv2.imread(str(p))
+                if img is not None:
+                    self.frame = cv2.resize(img, (self.width, self.height))
+                    return
+        # Standby canvas
+        canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        cv2.putText(canvas, "STANDBY: Hubungkan Webcam", (120, 240), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+        self.frame = canvas
+
     def _open_camera(self):
-        """Membuka kamera webcam default."""
+        """Mencoba membuka webcam fisik."""
         try:
             cap = cv2.VideoCapture(self.src)
             if cap.isOpened():
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                print(f"[CameraStream] Kamera {self.src} berhasil dihubungkan.")
-                return cap
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    print(f"[CameraStream] Webcam fisik {self.src} aktif dan terhubung.")
+                    self.has_physical_camera = True
+                    return cap
+                cap.release()
         except Exception as e:
-            print(f"[CameraStream] Error membuka kamera: {e}")
+            pass
         return None
 
     def _capture_thread_worker(self):
-        """Thread background terus membaca frame agar buffer kamera selalu terupdate (0 latency)."""
-        prev_time = time.time()
-        while self.is_running:
-            if self.cap is None or not self.cap.isOpened():
-                self.cap = self._open_camera()
-                if self.cap is None or not self.cap.isOpened():
-                    time.sleep(1.0) # Coba lagi 1 detik kemudian
-                    continue
+        """Thread background membaca kamera secara lancar."""
+        # Percobaan pertama
+        self.cap = self._open_camera()
+        if not self.cap:
+            print("[CameraStream] Webcam fisik tidak terdeteksi (atau sedang dipakai aplikasi lain). Mengaktifkan mode standby demo.")
 
-            ret, frame = self.cap.read()
-            if ret and frame is not None:
-                with self.lock:
-                    self.frame = frame
-                curr_time = time.time()
-                dt = curr_time - prev_time
-                if dt > 0:
-                    self.fps = 0.9 * self.fps + 0.1 * (1.0 / dt)
-                prev_time = curr_time
+        prev_time = time.time()
+        retry_interval = 10.0 # Cek ulang kamera fisik tiap 10 detik, jangan spam
+        last_retry = time.time()
+
+        while self.is_running:
+            if self.cap and self.cap.isOpened():
+                ret, frame = self.cap.read()
+                if ret and frame is not None:
+                    with self.lock:
+                        self.frame = frame
+                    curr_time = time.time()
+                    dt = curr_time - prev_time
+                    if dt > 0:
+                        self.fps = 0.9 * self.fps + 0.1 * (1.0 / dt)
+                    prev_time = curr_time
+                else:
+                    time.sleep(0.02)
             else:
-                time.sleep(0.01)
+                # Mode fallback
+                time.sleep(0.04) # ~25 FPS loop untuk mode fallback
+                self.fps = 25.0
+                if time.time() - last_retry > retry_interval:
+                    last_retry = time.time()
+                    self.cap = self._open_camera()
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
         with self.lock:
@@ -389,10 +423,20 @@ def serve_snapshot(filename):
 def serve_face(filename):
     return send_from_directory(str(db_manager.REGISTERED_FACES_DIR), filename)
 
+def _open_browser_when_ready():
+    """Membuka browser otomatis saat server sudah siap."""
+    time.sleep(1.2)
+    import webbrowser
+    webbrowser.open("http://127.0.0.1:5000")
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("🚀 SISTEM ABSENSI CERDAS & MASKED FACE DETECTION (MFD)")
     print("   Framework: Flask + Vanilla JS/HTML5 (Super Enteng & Smooth)")
     print("   Akses Web di browser Anda: http://127.0.0.1:5000")
     print("=" * 60 + "\n")
+    
+    # Jalankan browser otomatis di background thread
+    threading.Thread(target=_open_browser_when_ready, daemon=True).start()
+    
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
