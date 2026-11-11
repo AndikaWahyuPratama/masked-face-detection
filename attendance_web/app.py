@@ -555,8 +555,8 @@ with st.sidebar:
     with st.expander("⚙️ Kalibrasi Sensitivitas", expanded=False):
         conf_slider = st.slider("Confidence Deteksi Masker", 0.10, 0.90, 0.25, 0.05,
                                 help="Ambang batas deteksi YOLOv8 (Rekomendasi: 0.25)")
-        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.35, 0.70, 0.48, 0.01,
-                                help="Batas baku optimal anti-nama-tertukar: 0.48")
+        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.35, 0.75, 0.48, 0.01,
+                                help="Batas baku optimal: 0.48 (otomatis adaptif 0.66 saat bermasker)")
         cooldown_mins = st.number_input("Cooldown Presensi (Menit)", 1, 60, 5)
         
     st.markdown('<div class="nav-category">STATUS KOMPUTASI</div>', unsafe_allow_html=True)

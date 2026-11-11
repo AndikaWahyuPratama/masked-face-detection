@@ -144,7 +144,7 @@ class FaceEngine:
 
     def match_face(self, query_embedding: List[float], registered_users: List[Dict[str, Any]], distance_threshold: float = 0.48) -> Tuple[Optional[Dict[str, Any]], float]:
         """Pencocokan biometrik Euclidean Distance terhadap database pengguna terdaftar.
-        Ambang batas baku dioptimalkan ke 0.48 (anti nama tertukar).
+        Mendukung single template maupun multiple templates per pengguna.
         """
         if not registered_users or query_embedding is None:
             return None, 999.0
@@ -157,12 +157,23 @@ class FaceEngine:
             u_emb = u.get("embedding")
             if not u_emb:
                 continue
-            db_vec = np.array(u_emb, dtype=np.float32)
-            dist = float(np.linalg.norm(q_vec - db_vec))
-            if dist < min_dist:
-                min_dist = dist
-                if dist <= distance_threshold:
-                    best_match = u
+                
+            # Jika user memiliki multiple embedding templates (list of list)
+            if isinstance(u_emb, list) and len(u_emb) > 0 and isinstance(u_emb[0], list):
+                for emb_item in u_emb:
+                    db_vec = np.array(emb_item, dtype=np.float32)
+                    dist = float(np.linalg.norm(q_vec - db_vec))
+                    if dist < min_dist:
+                        min_dist = dist
+                        if dist <= distance_threshold:
+                            best_match = u
+            else:
+                db_vec = np.array(u_emb, dtype=np.float32)
+                dist = float(np.linalg.norm(q_vec - db_vec))
+                if dist < min_dist:
+                    min_dist = dist
+                    if dist <= distance_threshold:
+                        best_match = u
                     
         return best_match, min_dist
 
@@ -256,9 +267,15 @@ class FaceEngine:
             compliance = meta["compliance"]
             box_color = meta["color_bgr"]
             
-            # Pengenalan Biometrik Wajah
+            # Pengenalan Biometrik Wajah dengan Dynamic Adaptive Threshold
+            # Saat memakai masker, 50% area wajah bawah tertutup kain sehingga jarak FaceNet bergeser ~0.15.
+            # Threshold diadaptasi dinamis: 0.48 saat tanpa masker, 0.66 saat bermasker agar nama tetap terdeteksi.
+            effective_dist_thresh = distance_threshold
+            if cls_id in (0, 2):  # masked_face / incorrectly_masked_face
+                effective_dist_thresh = max(distance_threshold, 0.66)
+
             q_emb = self.extract_embedding_from_crop(face_crop)
-            matched_user, match_dist = self.match_face(q_emb, registered_users, distance_threshold=distance_threshold)
+            matched_user, match_dist = self.match_face(q_emb, registered_users, distance_threshold=effective_dist_thresh)
             
             if matched_user:
                 person_name = matched_user["name"]
