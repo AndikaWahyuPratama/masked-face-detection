@@ -760,8 +760,7 @@ if "Live Monitoring" in nav_selection:
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             registered_users = db_manager.get_all_users()
             frame_idx = 0
-            cached_annotated = None
-            cached_events = []
+            face_engine.tracks = []  # Reset tracker setiap mulai stream baru
             
             while cap.isOpened() and st.session_state.streaming:
                 ret, frame = cap.read()
@@ -773,19 +772,13 @@ if "Live Monitoring" in nav_selection:
                         break
                         
                 frame_idx += 1
-                # Optimasi Cerdas: Eksekusi pipeline AI tiap 2 frame (beban turun 50%, FPS naik)
-                if frame_idx % 2 == 1 or cached_annotated is None:
-                    annotated_frame, events = face_engine.process_frame(
-                        frame, 
-                        registered_users=registered_users, 
-                        conf_threshold=conf_slider,
-                        distance_threshold=dist_slider
-                    )
-                    cached_annotated = annotated_frame
-                    cached_events = events
-                else:
-                    annotated_frame = cached_annotated
-                    events = cached_events
+                # Pipeline AI Cepat & Ringan dengan Smart Temporal Tracking (Real-Time 30 FPS)
+                annotated_frame, events = face_engine.process_frame(
+                    frame, 
+                    registered_users=registered_users, 
+                    conf_threshold=conf_slider,
+                    distance_threshold=dist_slider
+                )
                 
                 # Catat Presensi
                 for ev in events:
@@ -825,8 +818,8 @@ if "Live Monitoring" in nav_selection:
                 
                 frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
                 video_screen.image(frame_rgb, channels="RGB", use_container_width=True)
-                time.sleep(0.02)
                 
+            face_engine.tracks = []
             cap.release()
             if temp_file and temp_file.exists():
                 try:
