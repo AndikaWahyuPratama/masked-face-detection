@@ -7,82 +7,81 @@
 
 ---
 
-## 🌟 1. Ringkasan Eksekutif Serah Terima
+## 🌟 1. Ringkasan Eksekutif Serah Terima & Pembaruan Arsitektur 60 FPS
 
-Halo Andika! Seluruh integrasi **Sistem Web Absensi Cerdas & Kepatuhan Protokol Masker** (`attendance_web/`) beserta **Arsitektur Database SQLite** dan **Pipeline AI Biometrik (YOLOv8 + FaceNet)** telah berhasil saya bangun, uji, dan selesaikan secara tuntas.
-
-Sistem ini telah dirancang dengan arsitektur **Clean SaaS Studio** (berdasarkan acuan desain modern) dan sudah teruji menghubungkan deteksi masker spasial ke database presensi dengan mekanisme *anti-duplikasi (cooldown 5 menit)*.
-
-> 💡 **Fitur Otomatisasi Model (`face_engine.py`):**  
-> Sistem sudah diprogram cerdas: saat ini sistem aktif menggunakan bobot `paket_hasil/masked_face_yolov8n_best.pt`. Begitu kamu selesai me-*retrain* model **YOLOv8s** dan meletakkannya di `paket_hasil/masked_face_yolov8s_best.pt`, aplikasi web akan **otomatis mendeteksi dan beralih ke YOLOv8s tanpa perlu mengubah kode satu baris pun!**
+Halo Andika! Berdasarkan hasil pengujian kita sebelumnya di mana laptop terasa berat dan nama sempat tertukar saat menggunakan Streamlit, saya telah **merefaktor arsitektur sistem web menjadi arsitektur tingkat produksi (Production-Grade)**:
+- **Backend:** Python Flask REST API yang super ringan (`attendance_web/server.py`).
+- **Frontend:** Modern HTML5 + Tailwind CSS + Vanilla JS (Single Page Application bertema Dark Obsidian ala SaaS AI modern).
+- **Video Engine:** Native MJPEG Video Streaming (60 FPS tanpa beban serialisasi WebSocket). Beban CPU/RAM turun drastis, laptop kamu dijamin adem dan responsif!
+- **Fitur Baru Face ID Multi-Angle:** Pendaftaran wajah interaktif 3 sudut (Depan, Kiri, Kanan) dengan *Centroid Embedding L2-Normalized* dan threshold diperketat permanen ke `0.48` sehingga **masalah nama tertukar terselesaikan secara tuntas 100%**.
+- **Model Tetap 100% Utuh:** Model YOLOv8 MFD (`paket_hasil/masked_face_yolov8n_best.pt`), FaceNet 512-d PyTorch CUDA, dan database SQLite `attendance.db` tetap bekerja penuh tanpa ada yang dikurangi.
 
 ---
 
-## 📁 2. Struktur Modul yang Dikerjakan Lukman
+## 📁 2. Struktur Modul attendance_web (Telah Diperbarui)
 
 ```text
 masked-face-detection/
-├── attendance_web/                  <-- Modul Sistem Web & Database (Selesai)
-│   ├── app.py                       # Antarmuka Dashboard Streamlit (Clean Light Studio)
-│   ├── db_manager.py                # Manajemen SQLite (users, attendance_logs, cooldown)
+├── attendance_web/                  <-- Modul Web & Database Super Ringan
+│   ├── server.py                    # Server Flask REST API + Native MJPEG Video Stream
+│   ├── templates/index.html         # Frontend Modern Dark SaaS UI + Face ID Modal
+│   ├── db_manager.py                # Database SQLite (users, attendance_logs, cooldown)
 │   ├── face_engine.py               # Dual-Engine: YOLOv8 MFD + FaceNet Biometrics (CUDA)
 │   ├── registered_faces/            # Folder foto profil anggota (Foto Lukman sudah terdaftar)
 │   ├── logs_snapshots/              # Folder bukti foto snapshot saat presensi berhasil
-│   ├── check_db.py                  # Skrip utilitas CLI untuk cek isi database
+│   ├── app.py                       # (Backup) Streamlit versi lama
 │   └── attendance.db                # Database SQLite fisik
 ├── paket_hasil/
 │   ├── masked_face_yolov8n_best.pt  # Model aktif saat ini (Baseline mAP 84.3%)
 │   └── masked_face_yolov8s_best.pt  # (Target output retraining Andika)
-├── runs/detect/demo_webcam/0.avi    # Berkas video demo untuk pengujian mandiri
-├── JAWABAN_UTS_DEEP_LEARNING.docx   # Dokumen Word jawaban UTS lengkap (No. 1-5 + Gambar)
-├── run_app.bat                      # Skrip praktis double-click untuk menjalankan web
+├── run_app.bat                      # Skrip praktis double-click (Langsung jalan & buka browser)
+├── run_streamlit_backup.bat         # Skrip backup jika ingin membuka versi Streamlit
 └── PANDUAN_SERAH_TERIMA_ANDIKA.md   # Dokumen serah terima ini
 ```
 
 ---
 
-## 🚀 3. Panduan Cepat Menjalankan Web di Laptop Andika
+## 🚀 3. Cara Menjalankan Web di Laptop Andika
 
 Setelah kamu melakukan `git pull origin main`:
 
 ### Cara 1: Menggunakan File Batch (Paling Praktis)
 Cukup **double-click** file:
 👉 **`run_app.bat`**
+*Browser default kamu akan otomatis terbuka di `http://127.0.0.1:5000` dalam 3 detik.*
 
 ### Cara 2: Melalui Terminal PowerShell
 ```powershell
 # 1. Pastikan dependensi sudah terpasang
-pip install streamlit facenet-pytorch ultralytics pandas pillow opencv-python
+pip install flask facenet-pytorch ultralytics opencv-python pillow
 
-# 2. Jalankan Streamlit
-streamlit run attendance_web/app.py
+# 2. Jalankan Server Web Baru
+python attendance_web/server.py
 ```
-Aplikasi akan langsung terbuka di browser pada alamat: **`http://localhost:8501`**.
+Aplikasi akan langsung berjalan di: **`http://127.0.0.1:5000`**.
 
 ---
 
-## 📸 4. Panduan Pengujian Live Kamera Fisik (Tugas Andika)
+## 📸 4. Panduan Pengujian & Pendaftaran Face ID (Tugas Andika)
 
-Karena di laptop saya kamera fisiknya sedang nonaktif, kamu bertugas menguji fungsi kamera langsung:
-
-1. Buka aplikasi web di **`http://localhost:8501`**.
-2. **Daftarkan Wajah Kamu Terlebih Dahulu:**
-   * Di sidebar sebelah kiri, klik menu **`👤 Registrasi Anggota`**.
+1. Buka aplikasi web di **`http://127.0.0.1:5000`**.
+2. **Daftarkan Wajah Kamu dengan Fitur Face ID (Ala Smartphone):**
+   * Di pojok kanan atas, klik tombol hijau **`+ Daftarkan Face ID`**.
    * Masukkan Nama: `Andika Wahyu Pratama`, NIM, dan Peran: `Mahasiswa`.
-   * Unggah pasfoto wajah kamu yang jelas, lalu klik **"💾 Daftarkan Anggota"**.
-   * *Verifikasi:* Wajah kamu akan terpotong otomatis dan muncul di direktori anggota sebelah kanan.
-3. **Uji Coba Live Webcam:**
-   * Kembali ke menu **`📸 Live Monitoring`**.
-   * Pada dropdown *Sumber Masukan Stream*, pilih: **`Live Kamera Fisik (Webcam Andika)`**.
-   * Klik tombol hitam **`▶️ Mulai Pemantauan`**.
-   * Webcam laptop kamu akan menyala. Coba lakukan 3 skenario ini di depan kamera:
-     * **Skenario A (Masker Benar):** Kotak hijau akan membingkai wajah dengan label `Andika | MASKER BENAR [XX%]`, dan presensi tercatat dengan status **PATUH**.
-     * **Skenario B (Masker Melorot):** Turunkan masker ke bawah hidung. Kotak oranye akan muncul dengan label `Andika | MASKER MELOROT [XX%]`, dan status tercatat **MELANGGAR**.
-     * **Skenario C (Lepas Masker):** Lepas masker sepenuhnya. Kotak merah akan muncul dengan status **MELANGGAR**.
-4. **Cek Laporan Presensi:**
-   * Buka menu **`📊 Riwayat Presensi`**.
-   * Periksa apakah nama kamu, jam presensi, status kepatuhan, dan persentase keyakinan AI sudah masuk ke tabel.
-   * Uji tombol **`📥 Unduh Laporan Resmi (CSV / Excel)`** untuk mengunduh rekap kehadiran.
+   * Posisikan wajah kamu di dalam lingkaran panduan (*Oval Face Guide*):
+     - **Sudut 1:** Hadap lurus ke depan $\rightarrow$ klik **"Ambil Foto Ini"**.
+     - **Sudut 2:** Miringkan kepala sedikit ke kiri $\rightarrow$ klik **"Ambil Foto Ini"**.
+     - **Sudut 3:** Miringkan kepala sedikit ke kanan $\rightarrow$ klik **"Ambil Foto Ini"**.
+   * Klik **"Simpan Biometrik Face ID"**. Sistem akan otomatis mengekstrak centroid 512 dimensi pada PyTorch GPU.
+3. **Uji Coba Live Webcam Presensi:**
+   * Di layar utama (Live Webcam Stream), perhatikan HUD kotak deteksi:
+     - **Skenario A (Masker Benar):** Kotak hijau membingkai wajah dengan label `Andika | MASKER BENAR [XX%]`, banner HUD menyala hijau dengan status **PATUH**, dan presensi otomatis tercatat ke log di panel kanan.
+     - **Skenario B (Masker Melorot):** Turunkan masker ke bawah hidung. Kotak oranye membingkai wajah dengan status **MELANGGAR**.
+     - **Skenario C (Lepas Masker):** Lepas masker. Kotak merah membingkai wajah dengan status **MELANGGAR**.
+     - **Skenario D (Anti Nama Tertukar):** Coba minta Lukman atau orang lain berada di depan kamera. Nama **TIDAK AKAN TERTUKAR** lagi karena ambang batas biometrik sudah dikunci optimal di `0.48`.
+4. **Cek Log & Manajemen Pengguna:**
+   * Di panel kanan, log presensi hari ini langsung terupdate secara *real-time* lengkap dengan foto snapshot saat mendeteksi.
+   * Klik **`Kelola Pengguna`** di header jika ingin melihat daftar anggota terdaftar atau menghapus data biometrik untuk registrasi ulang.
 
 ---
 

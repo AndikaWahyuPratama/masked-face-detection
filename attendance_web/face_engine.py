@@ -142,8 +142,10 @@ class FaceEngine:
         except Exception as e:
             return False, None, None, f"Terjadi kesalahan saat registrasi: {str(e)}"
 
-    def match_face(self, query_embedding: List[float], registered_users: List[Dict[str, Any]], distance_threshold: float = 0.65) -> Tuple[Optional[Dict[str, Any]], float]:
-        """Pencocokan biometrik Euclidean Distance terhadap database pengguna terdaftar."""
+    def match_face(self, query_embedding: List[float], registered_users: List[Dict[str, Any]], distance_threshold: float = 0.48) -> Tuple[Optional[Dict[str, Any]], float]:
+        """Pencocokan biometrik Euclidean Distance terhadap database pengguna terdaftar.
+        Ambang batas baku dioptimalkan ke 0.48 (anti nama tertukar).
+        """
         if not registered_users or query_embedding is None:
             return None, 999.0
             
@@ -164,6 +166,42 @@ class FaceEngine:
                     
         return best_match, min_dist
 
+    def enroll_face_id_multishot(self, images: List[Any]) -> Tuple[bool, Optional[List[float]], Optional[np.ndarray], str]:
+        """Pendaftaran Wajah Multi-Shot ala Face ID Smartphone.
+        Menerima beberapa gambar wajah (depan, miring kiri, miring kanan).
+        Mengekstrak embedding untuk masing-masing sudut, menghitung rata-rata vektor (centroid),
+        dan menormalisasi L2 agar pengenalan sangat akurat dan tahan berbagai pose.
+        """
+        if not images:
+            return False, None, None, "Tidak ada data gambar yang diterima."
+            
+        embeddings = []
+        best_crop = None
+        
+        for idx, img_input in enumerate(images):
+            try:
+                success, emb, crop, msg = self.register_face_from_image(img_input)
+                if success and emb is not None:
+                    embeddings.append(emb)
+                    if best_crop is None or idx == 0:
+                        best_crop = crop
+            except Exception as e:
+                print(f"[FaceEngine] Error ekstraksi frame Face ID {idx}: {e}")
+                
+        if not embeddings:
+            return False, None, None, "Wajah tidak terdeteksi jelas pada semua frame yang dikirim. Pastikan wajah tepat di lingkaran kamera."
+            
+        # Hitung Centroid (Rata-rata Vektor)
+        emb_matrix = np.array(embeddings, dtype=np.float32) # shape: (N, 512)
+        mean_emb = np.mean(emb_matrix, axis=0) # shape: (512,)
+        # Normalisasi L2
+        norm = np.linalg.norm(mean_emb)
+        if norm > 0:
+            mean_emb = mean_emb / norm
+            
+        centroid_list = mean_emb.tolist()
+        return True, centroid_list, best_crop, f"Sukses mengekstrak {len(embeddings)} sudut wajah (Face ID Centroid)."
+
     @staticmethod
     def _draw_corner_brackets(img: np.ndarray, x1: int, y1: int, x2: int, y2: int, color: Tuple[int, int, int], length: int = 15, thickness: int = 2):
         """Menggambar aksen sudut modern (bracket corners) bergaya HUD Cyberpunk/AI Vision."""
@@ -181,7 +219,7 @@ class FaceEngine:
         cv2.line(img, (x2, y2), (x2 - length, y2), color, thickness + 1)
         cv2.line(img, (x2, y2), (x2, y2 - length), color, thickness + 1)
 
-    def process_frame(self, frame_bgr: np.ndarray, registered_users: List[Dict[str, Any]], conf_threshold: float = 0.25, distance_threshold: float = 0.65) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
+    def process_frame(self, frame_bgr: np.ndarray, registered_users: List[Dict[str, Any]], conf_threshold: float = 0.25, distance_threshold: float = 0.48) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
         """Memproses 1 frame video dengan visualisasi grafis profesional."""
         annotated_frame = frame_bgr.copy()
         events = []

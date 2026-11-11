@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MFD Smart Attendance System - YOLOv8 + FaceNet</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+            },
+            dark: {
+              900: '#07090e',
+              800: '#0e131f',
+              700: '#151d30',
+              600: '#1e293b',
+              500: '#334155'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0e131f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Pulse animation */
+    @keyframes scanline {
+      0% { top: 0%; opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { top: 100%; opacity: 0.8; }
+    }
+    .scanner-line {
+      animation: scanline 2.5s ease-in-out infinite alternate;
+    }
+    
+    .hud-glow {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
+    }
+  </style>
+</head>
+
+<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="bg-dark-800/80 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-30 px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      
+      <!-- Brand & Project Info -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold text-white tracking-tight">MFD Vision Attendance</h1>
+            <span class="px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live AI
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">YOLOv8 Nano MFD + FaceNet InceptionResnetV1</p>
+        </div>
+      </div>
+
+      <!-- System Telemetry & Hardware Badges -->
+      <div class="hidden md:flex items-center gap-3">
+        <!-- GPU Status -->
+        <div class="px-3 py-1.5 rounded-lg bg-dark-700/80 border border-slate-700/60 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-xs text-slate-300 font-mono" id="hwDevice">Memuat GPU...</span>
+        </div>
+        <!-- FPS Counter -->
+        <div class="px-3 py-1.5 rounded-lg bg-dark-700/80 border border-slate-700/60 flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span class="text-xs text-slate-300 font-mono"><span id="liveFps">0.0</span> FPS</span>
+        </div>
+        <!-- Database Count -->
+        <div class="px-3 py-1.5 rounded-lg bg-dark-700/80 border border-slate-700/60 flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span class="text-xs text-slate-300 font-mono"><span id="totalUsersCount">0</span> Terdaftar</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2.5">
+        <button onclick="openUsersModal()" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 bg-dark-700 hover:bg-slate-700 transition flex items-center gap-1.5 border border-slate-700">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Kelola Pengguna
+        </button>
+
+        <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition shadow-lg shadow-emerald-600/25 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Daftarkan Face ID
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN LAYOUT ================= -->
+  <main class="max-w-7xl mx-auto px-6 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Live Camera Stream & AI HUD (7 Cols) -->
+    <div class="lg:col-span-7 flex flex-col gap-4">
+      
+      <!-- Video Player Card -->
+      <div class="bg-dark-800 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative group">
+        
+        <!-- Video Stream Header Info -->
+        <div class="px-4 py-3 bg-dark-800/90 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span class="text-xs font-bold tracking-wider text-slate-200">LIVE WEBCAM STREAM</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-slate-400 font-mono">
+            <span>RES: 640x480</span>
+            <span>•</span>
+            <span class="text-emerald-400">HARD-THRESHOLD: 0.48</span>
+          </div>
+        </div>
+
+        <!-- Video Frame -->
+        <div class="relative bg-black flex items-center justify-center min-h-[440px] aspect-[4/3] overflow-hidden">
+          <img 
+            id="videoElement" 
+            src="/video_feed" 
+            alt="AI Video Stream" 
+            class="w-full h-full object-cover"
+            onerror="this.onerror=null; this.src=''; document.getElementById('cameraError').classList.remove('hidden');"
+          />
+
+          <!-- Fallback when camera is offline -->
+          <div id="cameraError" class="hidden absolute inset-0 bg-dark-900/90 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-200">Kamera Tidak Terdeteksi</p>
+              <p class="text-xs text-slate-400 mt-1 max-w-sm">Pastikan webcam laptop terpasang atau tidak sedang dipakai oleh aplikasi lain (seperti Zoom/Teams).</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Realtime Detection Banner (HUD Card) -->
+        <div class="p-4 bg-dark-800/95 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+              <div id="hudAvatarBox" class="w-11 h-11 rounded-xl bg-dark-700 border border-slate-700 flex items-center justify-center text-slate-400 font-bold text-sm overflow-hidden">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 id="hudName" class="text-sm font-bold text-white tracking-tight">Menunggu Wajah...</h3>
+                  <span id="hudComplianceBadge" class="hidden px-2 py-0.5 text-[10px] font-bold rounded">PATUH</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                  <span id="hudIdentifier" class="font-mono">Standby</span>
+                  <span id="hudConfidence" class="text-slate-500"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mask Status Indicator -->
+            <div id="hudMaskStatusBox" class="text-right">
+              <span class="text-xs text-slate-400 block mb-0.5">Status Masker:</span>
+              <span id="hudMaskLabel" class="text-xs font-bold text-slate-300 font-mono tracking-wide">Mendeteksi...</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick Explanation Bar -->
+      <div class="bg-dark-800/50 border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between text-xs text-slate-400">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Absensi otomatis tercatat saat wajah terverifikasi dan memenuhi jeda cooldown 5 menit.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Realtime Attendance Feed & Summary (5 Cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- Today's Metric Stat Cards -->
+      <div class="grid grid-cols-3 gap-3">
+        <!-- Hadir -->
+        <div class="bg-dark-800 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Hadir Hari Ini</span>
+          <span class="text-2xl font-extrabold text-white mt-1 block font-mono" id="statTotalPresent">0</span>
+          <span class="text-[10px] text-slate-500 block mt-0.5">Mahasiswa unik</span>
+        </div>
+        <!-- Patuh -->
+        <div class="bg-dark-800 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+          <span class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider block">Kepatuhan</span>
+          <span class="text-2xl font-extrabold text-emerald-400 mt-1 block font-mono"><span id="statPatuhPct">100</span>%</span>
+          <span class="text-[10px] text-emerald-500/80 block mt-0.5"><span id="statTotalPatuh">0</span> Patuh</span>
+        </div>
+        <!-- Melanggar -->
+        <div class="bg-dark-800 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+          <span class="text-[11px] font-semibold text-red-400 uppercase tracking-wider block">Melanggar</span>
+          <span class="text-2xl font-extrabold text-red-400 mt-1 block font-mono" id="statTotalMelanggar">0</span>
+          <span class="text-[10px] text-red-500/80 block mt-0.5">Tanpa masker</span>
+        </div>
+      </div>
+
+      <!-- Live Attendance Log Card -->
+      <div class="bg-dark-800 border border-slate-800 rounded-2xl flex-1 flex flex-col overflow-hidden shadow-2xl min-h-[460px]">
+        
+        <!-- Feed Card Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Log Presensi Hari Ini</h2>
+          </div>
+          <button onclick="fetchAttendanceLogs()" class="p-1 rounded text-slate-400 hover:text-white transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Filter Pills -->
+        <div class="px-4 py-2 bg-dark-900/40 border-b border-slate-800/80 flex items-center gap-2">
+          <button onclick="filterLogs('Semua')" id="filterAll" class="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-dark-700 text-white">Semua</button>
+          <button onclick="filterLogs('PATUH')" id="filterPatuh" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-slate-400 hover:text-slate-200">Patuh</button>
+          <button onclick="filterLogs('MELANGGAR')" id="filterMelanggar" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-slate-400 hover:text-slate-200">Melanggar</button>
+        </div>
+
+        <!-- Log List Scrollable Area -->
+        <div id="attendanceList" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+          <!-- Dynamically populated via JS -->
+          <div class="text-center py-12 text-slate-500 text-xs">
+            Memuat riwayat presensi...
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ================= MODAL: FACE ID ENROLLMENT (MULTI-SHOT) ================= -->
+  <div id="modalRegister" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-dark-800 border border-slate-700 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-700/80 flex items-center justify-between bg-dark-900/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Pendaftaran Face ID (Multi-Angle)</h3>
+            <p class="text-xs text-slate-400">Kalibrasi 3 sudut wajah untuk mencegah nama tertukar</p>
+          </div>
+        </div>
+        <button onclick="closeRegisterModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+
+        <!-- Form Input -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Lengkap *</label>
+            <input type="text" id="regName" placeholder="Contoh: Muhammad Lukman" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">NIM / ID *</label>
+            <input type="text" id="regIdentifier" placeholder="Contoh: 4152401009" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Peran / Role</label>
+          <select id="regRole" class="w-full bg-dark-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            <option value="Mahasiswa">Mahasiswa</option>
+            <option value="Dosen">Dosen</option>
+            <option value="Staff">Staff</option>
+          </select>
+        </div>
+
+        <!-- Camera Face ID Scanner Viewport -->
+        <div class="relative bg-black rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center border border-slate-700">
+          <video id="regWebcam" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+          
+          <!-- Oval Face Guide (Ala Apple Face ID) -->
+          <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div class="w-48 h-60 rounded-[50%] border-2 border-dashed border-emerald-400/70 relative flex items-center justify-center">
+              <div class="scanner-line absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent"></div>
+            </div>
+          </div>
+
+          <!-- Instruction Badge overlay -->
+          <div class="absolute top-3 inset-x-0 flex justify-center">
+            <span id="faceIdPromptBadge" class="px-3 py-1 rounded-full bg-dark-900/85 backdrop-blur border border-emerald-500/40 text-[11px] font-bold text-emerald-400 shadow-lg">
+              Sudut 1: Hadap Lurus ke Depan
+            </span>
+          </div>
+
+          <!-- Capture Progress overlay -->
+          <div class="absolute bottom-3 inset-x-4 flex items-center justify-between">
+            <span class="text-[11px] font-mono font-bold text-white bg-dark-900/80 px-2.5 py-1 rounded-md border border-slate-700">
+              Progres: <span id="captureCount">0</span>/3 Foto
+            </span>
+            <button onclick="captureCurrentAngle()" id="btnCaptureAngle" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center gap-1.5 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              </svg>
+              Ambil Foto Ini
+            </button>
+          </div>
+        </div>
+
+        <!-- Snapshots Gallery Preview -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Hasil Sudut Wajah Terambil:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <div id="thumbSlot0" class="aspect-square bg-dark-900 border border-slate-700/80 rounded-lg flex flex-col items-center justify-center text-[10px] text-slate-500 overflow-hidden relative">
+              <span>1. Depan</span>
+            </div>
+            <div id="thumbSlot1" class="aspect-square bg-dark-900 border border-slate-700/80 rounded-lg flex flex-col items-center justify-center text-[10px] text-slate-500 overflow-hidden relative">
+              <span>2. Kiri</span>
+            </div>
+            <div id="thumbSlot2" class="aspect-square bg-dark-900 border border-slate-700/80 rounded-lg flex flex-col items-center justify-center text-[10px] text-slate-500 overflow-hidden relative">
+              <span>3. Kanan</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback & Status Message -->
+        <div id="regStatusMsg" class="hidden text-xs p-3 rounded-lg border"></div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3.5 border-t border-slate-700/80 bg-dark-900/50 flex items-center justify-between">
+        <button onclick="resetFaceIdCapture()" class="text-xs text-slate-400 hover:text-slate-200 font-semibold">
+          Reset Foto
+        </button>
+        <button onclick="submitFaceIdRegistration()" id="btnSubmitFaceId" disabled class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-slate-700 cursor-not-allowed transition flex items-center gap-2">
+          <span>Simpan Biometrik Face ID</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= MODAL: USER MANAGEMENT ================= -->
+  <div id="modalUsers" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-dark-800 border border-slate-700 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-700/80 flex items-center justify-between bg-dark-900/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Daftar Anggota Terdaftar</h3>
+            <p class="text-xs text-slate-400">Daftar profil dan template biometrik wajah di database</p>
+          </div>
+        </div>
+        <button onclick="closeUsersModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Users Table Scroll Area -->
+      <div class="flex-1 overflow-y-auto p-4">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-dark-900/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
+            <tr>
+              <th class="py-2.5 px-3">Foto</th>
+              <th class="py-2.5 px-3">Nama</th>
+              <th class="py-2.5 px-3">NIM / ID</th>
+              <th class="py-2.5 px-3">Peran</th>
+              <th class="py-2.5 px-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody" class="divide-y divide-slate-800">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Hidden canvas for Face ID capture -->
+  <canvas id="hiddenCanvas" class="hidden"></canvas>
+
+  <!-- ================= CLIENT JAVASCRIPT ================= -->
+  <script>
+    let currentComplianceFilter = 'Semua';
+    let capturedFaceImages = [];
+    let webcamStream = null;
+    const prompts = [
+      "Sudut 1: Hadap Lurus ke Depan",
+      "Sudut 2: Miringkan Kepala Sedikit ke KIRI",
+      "Sudut 3: Miringkan Kepala Sedikit ke KANAN"
+    ];
+
+    // ================= INITIAL LOAD & POLLING =================
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchStatus();
+      fetchStats();
+      fetchAttendanceLogs();
+
+      // Poll stats & status every 3 seconds
+      setInterval(fetchStats, 3000);
+      setInterval(fetchStatus, 3000);
+      setInterval(fetchAttendanceLogs, 4000);
+      setInterval(fetchLatestEvent, 1000);
+    });
+
+    // ================= TELEMETRY & STATUS =================
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('hwDevice').innerText = data.gpu_name ? data.gpu_name : data.device;
+        document.getElementById('liveFps').innerText = data.camera_fps.toFixed(1);
+        document.getElementById('totalUsersCount').innerText = data.total_users;
+      } catch (e) {
+        console.error("Status fetch error:", e);
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('statTotalPresent').innerText = data.total_present;
+        document.getElementById('statTotalPatuh').innerText = data.total_patuh;
+        document.getElementById('statTotalMelanggar').innerText = data.total_melanggar;
+        document.getElementById('statPatuhPct').innerText = data.patuh_pct;
+      } catch (e) {
+        console.error("Stats fetch error:", e);
+      }
+    }
+
+    // ================= REALTIME HUD UPDATE =================
+    async function fetchLatestEvent() {
+      try {
+        const res = await fetch('/api/latest_event');
+        const event = await res.json();
+        
+        const hudName = document.getElementById('hudName');
+        const hudIdentifier = document.getElementById('hudIdentifier');
+        const hudConfidence = document.getElementById('hudConfidence');
+        const hudComplianceBadge = document.getElementById('hudComplianceBadge');
+        const hudMaskLabel = document.getElementById('hudMaskLabel');
+
+        if (event.detected) {
+          hudName.innerText = event.name;
+          hudIdentifier.innerText = event.identifier;
+          hudConfidence.innerText = `• Conf: ${event.confidence}%`;
+          hudMaskLabel.innerText = event.mask_label;
+
+          // Compliance Badge
+          hudComplianceBadge.classList.remove('hidden', 'bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/30', 'bg-red-500/20', 'text-red-400', 'border-red-500/30');
+          if (event.compliance === 'PATUH') {
+            hudComplianceBadge.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border', 'border-emerald-500/30');
+            hudComplianceBadge.innerText = 'PATUH';
+            hudMaskLabel.className = 'text-xs font-bold text-emerald-400 font-mono tracking-wide';
+          } else {
+            hudComplianceBadge.classList.add('bg-red-500/20', 'text-red-400', 'border', 'border-red-500/30');
+            hudComplianceBadge.innerText = 'MELANGGAR';
+            hudMaskLabel.className = 'text-xs font-bold text-red-400 font-mono tracking-wide';
+          }
+        } else {
+          hudName.innerText = 'Menunggu Wajah...';
+          hudIdentifier.innerText = 'Standby';
+          hudConfidence.innerText = '';
+          hudComplianceBadge.classList.add('hidden');
+          hudMaskLabel.innerText = 'Standby';
+          hudMaskLabel.className = 'text-xs font-bold text-slate-400 font-mono tracking-wide';
+        }
+      } catch (e) {
+        console.error("Latest event error:", e);
+      }
+    }
+
+    // ================= ATTENDANCE LOGS =================
+    async function fetchAttendanceLogs() {
+      try {
+        const res = await fetch(`/api/attendance_today?compliance=${encodeURIComponent(currentComplianceFilter)}`);
+        const logs = await res.json();
+        renderAttendanceList(logs);
+      } catch (e) {
+        console.error("Attendance logs error:", e);
+      }
+    }
+
+    function filterLogs(type) {
+      currentComplianceFilter = type;
+      ['filterAll', 'filterPatuh', 'filterMelanggar'].forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-slate-400 hover:text-slate-200';
+      });
+
+      if (type === 'Semua') {
+        document.getElementById('filterAll').className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md bg-dark-700 text-white';
+      } else if (type === 'PATUH') {
+        document.getElementById('filterPatuh').className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md bg-emerald-600/30 text-emerald-400 border border-emerald-500/40';
+      } else {
+        document.getElementById('filterMelanggar').className = 'px-2.5 py-1 text-[11px] font-semibold rounded-md bg-red-600/30 text-red-400 border border-red-500/40';
+      }
+      fetchAttendanceLogs();
+    }
+
+    function renderAttendanceList(logs) {
+      const container = document.getElementById('attendanceList');
+      if (!logs || logs.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-xs">
+            Belum ada data presensi untuk filter ini hari ini.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = logs.map(log => {
+        const isPatuh = log.compliance === 'PATUH';
+        const badgeColor = isPatuh 
+          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+          : 'bg-red-500/10 text-red-400 border border-red-500/30';
+        
+        const photoHtml = log.snapshot_url 
+          ? `<img src="${log.snapshot_url}" class="w-10 h-10 rounded-lg object-cover border border-slate-700" alt="Snap" onerror="this.onerror=null; this.src=''; this.classList.add('hidden')">`
+          : `<div class="w-10 h-10 rounded-lg bg-dark-700 border border-slate-700 flex items-center justify-center text-slate-400 text-xs font-bold">${log.name.charAt(0)}</div>`;
+
+        const timeStr = log.timestamp ? log.timestamp.split(' ')[1] : '';
+
+        return `
+          <div class="p-3 bg-dark-900/60 border border-slate-800 rounded-xl flex items-center justify-between hover:border-slate-700 transition">
+            <div class="flex items-center gap-3">
+              ${photoHtml}
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xs font-bold text-white">${log.name}</h4>
+                  <span class="px-1.5 py-0.5 text-[9px] font-bold rounded ${badgeColor}">${log.compliance}</span>
+                </div>
+                <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 font-mono">
+                  <span>${log.identifier || 'Unknown'}</span>
+                  <span>•</span>
+                  <span>${log.mask_status}</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs font-bold font-mono text-slate-300 block">${timeStr}</span>
+              <span class="text-[10px] text-slate-500">${Math.round(log.confidence * 100)}% Conf</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ================= FACE ID MULTI-SHOT ENROLLMENT =================
+    async function openRegisterModal() {
+      document.getElementById('modalRegister').classList.remove('hidden');
+      resetFaceIdCapture();
+      
+      // Start registration webcam
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+        });
+        const video = document.getElementById('regWebcam');
+        video.srcObject = webcamStream;
+      } catch (err) {
+        alert("Gagal membuka webcam untuk pendaftaran Face ID: " + err.message);
+      }
+    }
+
+    function closeRegisterModal() {
+      document.getElementById('modalRegister').classList.add('hidden');
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(t => t.stop());
+        webcamStream = null;
+      }
+    }
+
+    function captureCurrentAngle() {
+      if (capturedFaceImages.length >= 3) {
+        alert("Sudah mengambil 3 sudut foto. Anda bisa menyimpan data sekarang.");
+        return;
+      }
+
+      const video = document.getElementById('regWebcam');
+      const canvas = document.getElementById('hiddenCanvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+
+      // Flip horizontal to match mirrored preview
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      capturedFaceImages.push(dataUrl);
+
+      // Update thumbnail preview
+      const idx = capturedFaceImages.length - 1;
+      const thumbSlot = document.getElementById(`thumbSlot${idx}`);
+      thumbSlot.innerHTML = `
+        <img src="${dataUrl}" class="w-full h-full object-cover rounded-lg" />
+        <span class="absolute bottom-1 right-1 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded">OK</span>
+      `;
+
+      // Update counter and prompts
+      const count = capturedFaceImages.length;
+      document.getElementById('captureCount').innerText = count;
+
+      if (count < 3) {
+        document.getElementById('faceIdPromptBadge').innerText = prompts[count];
+      } else {
+        document.getElementById('faceIdPromptBadge').innerText = "✅ Selesai! Klik Simpan Biometrik Face ID";
+        document.getElementById('faceIdPromptBadge').className = "px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur border border-emerald-500 text-[11px] font-bold text-emerald-300 shadow-lg";
+        
+        // Enable submit button
+        const btn = document.getElementById('btnSubmitFaceId');
+        btn.disabled = false;
+        btn.className = "px-4 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 transition cursor-pointer shadow-lg shadow-emerald-600/30 flex items-center gap-2";
+      }
+    }
+
+    function resetFaceIdCapture() {
+      capturedFaceImages = [];
+      document.getElementById('captureCount').innerText = "0";
+      document.getElementById('faceIdPromptBadge').innerText = prompts[0];
+      document.getElementById('faceIdPromptBadge').className = "px-3 py-1 rounded-full bg-dark-900/85 backdrop-blur border border-emerald-500/40 text-[11px] font-bold text-emerald-400 shadow-lg";
+
+      const labels = ["1. Depan", "2. Kiri", "3. Kanan"];
+      for (let i = 0; i < 3; i++) {
+        document.getElementById(`thumbSlot${i}`).innerHTML = `<span>${labels[i]}</span>`;
+      }
+
+      const btn = document.getElementById('btnSubmitFaceId');
+      btn.disabled = true;
+      btn.className = "px-4 py-2 rounded-lg text-xs font-bold text-white bg-slate-700 cursor-not-allowed transition flex items-center gap-2";
+
+      const statusBox = document.getElementById('regStatusMsg');
+      statusBox.classList.add('hidden');
+    }
+
+    async function submitFaceIdRegistration() {
+      const name = document.getElementById('regName').value.trim();
+      const identifier = document.getElementById('regIdentifier').value.trim();
+      const role = document.getElementById('regRole').value;
+      const statusBox = document.getElementById('regStatusMsg');
+
+      if (!name || !identifier) {
+        alert("Nama dan NIM wajib diisi!");
+        return;
+      }
+
+      if (capturedFaceImages.length === 0) {
+        alert("Minimal ambil 1 foto wajah!");
+        return;
+      }
+
+      // UI Loading state
+      statusBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-400', 'border-red-500/30', 'bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/30');
+      statusBox.classList.add('bg-cyan-500/10', 'text-cyan-300', 'border-cyan-500/30');
+      statusBox.innerHTML = `
+        <div class="flex items-center gap-2">
+          <svg class="animate-spin w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Sedang mengekstrak 512-dimensi Centroid Biometrik pada PyTorch CUDA...</span>
+        </div>
+      `;
+
+      try {
+        const res = await fetch('/api/register_face_id', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            identifier: identifier,
+            role: role,
+            images: capturedFaceImages
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          statusBox.className = 'text-xs p-3 rounded-lg border bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+          statusBox.innerText = `Sukses! ${data.message}`;
+          fetchStatus();
+          setTimeout(() => {
+            closeRegisterModal();
+          }, 1500);
+        } else {
+          statusBox.className = 'text-xs p-3 rounded-lg border bg-red-500/10 text-red-400 border-red-500/30';
+          statusBox.innerText = `Gagal: ${data.message}`;
+        }
+      } catch (err) {
+        statusBox.className = 'text-xs p-3 rounded-lg border bg-red-500/10 text-red-400 border-red-500/30';
+        statusBox.innerText = `Error jaringan / server: ${err.message}`;
+      }
+    }
+
+    // ================= USER MANAGEMENT MODAL =================
+    async function openUsersModal() {
+      document.getElementById('modalUsers').classList.remove('hidden');
+      loadUsersList();
+    }
+
+    function closeUsersModal() {
+      document.getElementById('modalUsers').classList.add('hidden');
+    }
+
+    async function loadUsersList() {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">Memuat data pengguna...</td></tr>`;
+
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+
+        if (!users || users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">Belum ada pengguna terdaftar.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+          const photoHtml = u.photo_url 
+            ? `<img src="${u.photo_url}" class="w-8 h-8 rounded-lg object-cover border border-slate-700" alt="Face">`
+            : `<div class="w-8 h-8 rounded-lg bg-dark-700 border border-slate-700 flex items-center justify-center text-slate-400 font-bold">${u.name.charAt(0)}</div>`;
+
+          return `
+            <tr class="hover:bg-dark-700/40 transition">
+              <td class="py-2.5 px-3">${photoHtml}</td>
+              <td class="py-2.5 px-3 font-semibold text-white">${u.name}</td>
+              <td class="py-2.5 px-3 font-mono text-slate-400">${u.identifier}</td>
+              <td class="py-2.5 px-3 text-slate-400">${u.role || 'Mahasiswa'}</td>
+              <td class="py-2.5 px-3 text-right">
+                <button onclick="deleteUser(${u.id}, '${u.name}')" class="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition text-[11px] font-semibold">
+                  Hapus
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-red-400">Gagal memuat pengguna: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function deleteUser(userId, userName) {
+      if (!confirm(`Yakin ingin menghapus data biometrik untuk ${userName}?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          loadUsersList();
+          fetchStatus();
+        } else {
+          alert("Gagal menghapus: " + data.message);
+        }
+      } catch (err) {
+        alert("Error jaringan: " + err.message);
+      }
+    }
+  </script>
+
+</body>
+</html>
