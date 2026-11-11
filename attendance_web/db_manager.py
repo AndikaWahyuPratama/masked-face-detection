@@ -139,7 +139,7 @@ def can_attend(identifier: str, cooldown_minutes: int = 5) -> bool:
     Mencegah pencatatan berulang (spamming log) dalam durasi tertentu.
     """
     if not identifier or identifier.lower() == "unknown":
-        return True
+        return False # Jangan catat spam jika orang tidak dikenal
     
     conn = get_connection()
     c = conn.cursor()
@@ -156,14 +156,15 @@ def can_attend(identifier: str, cooldown_minutes: int = 5) -> bool:
 def record_attendance(name: str, identifier: Optional[str], mask_status: str, 
                       compliance: str, confidence: float, snapshot_path: Optional[str] = None, 
                       user_id: Optional[int] = None) -> bool:
-    """Mencatat presensi baru ke tabel attendance_logs."""
+    """Mencatat presensi baru ke tabel attendance_logs dengan waktu lokal konsisten."""
     conn = get_connection()
     c = conn.cursor()
     try:
+        now_local = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("""
-        INSERT INTO attendance_logs (user_id, name, identifier, mask_status, compliance, confidence, snapshot_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, name, identifier, mask_status, compliance, float(confidence), snapshot_path))
+        INSERT INTO attendance_logs (user_id, name, identifier, mask_status, compliance, confidence, snapshot_path, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, name, identifier, mask_status, compliance, float(confidence), snapshot_path, now_local))
         conn.commit()
         return True
     except Exception as e:

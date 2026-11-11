@@ -47,6 +47,8 @@ face_engine = get_face_engine()
 
 if "streaming" not in st.session_state:
     st.session_state.streaming = False
+if "attendance_cooldown" not in st.session_state:
+    st.session_state.attendance_cooldown = {}
 
 # ==============================================================================
 # 2. DESIGN SYSTEM & REFINED LAYOUT CSS
@@ -566,20 +568,6 @@ with st.sidebar:
         <div style="color: #10B981; font-weight: 600; margin-top: 4px;">● CUDA Engine Ready</div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # User Profile Pill
-    st.markdown("""
-    <div class="profile-card">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="profile-avatar">ML</div>
-            <div>
-                <div style="font-weight: 700; font-size: 0.85rem; color: #0F172A;">Muhammad Lukman</div>
-                <div style="font-size: 0.72rem; color: #64748B;">41524010017 • Lab DL</div>
-            </div>
-        </div>
-        <div style="color: #94A3B8; font-size: 0.85rem;">›</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 # ==============================================================================
 # 4. MAIN WORKSPACE CONTAINER
@@ -809,24 +797,31 @@ if "Live Monitoring" in nav_selection:
                     crop_img = ev["crop"]
                     user_id = ev["user_id"]
                     
-                    if name != "Tamu / Belum Terdaftar" and ident != "Unknown":
-                        if db_manager.can_attend(ident, cooldown_minutes=cooldown_mins):
-                            now_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            snap_name = f"{ident}_{now_stamp}.jpg"
-                            snap_path = db_manager.SNAPSHOTS_DIR / snap_name
-                            cv2.imwrite(str(snap_path), crop_img)
-                            
-                            db_manager.record_attendance(
-                                name=name,
-                                identifier=ident,
-                                mask_status=status_mask,
-                                compliance=comp,
-                                confidence=conf,
-                                snapshot_path=str(snap_path),
-                                user_id=user_id
-                            )
-                            st.toast(f"✅ Presensi Berhasil: {name} ({comp})", icon="🎉")
-                            render_recent_feed()
+                    if name != "Tamu / Belum Terdaftar" and ident != "Unknown" and user_id is not None:
+                        now_ts = time.time()
+                        last_ts = st.session_state.attendance_cooldown.get(ident, 0)
+                        cooldown_secs = float(cooldown_mins) * 60.0
+                        
+                        # Dual-Layer Anti-Spam: Cek in-memory session dan database
+                        if (now_ts - last_ts) >= cooldown_secs:
+                            if db_manager.can_attend(ident, cooldown_minutes=cooldown_mins):
+                                st.session_state.attendance_cooldown[ident] = now_ts
+                                now_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                snap_name = f"{ident}_{now_stamp}.jpg"
+                                snap_path = db_manager.SNAPSHOTS_DIR / snap_name
+                                cv2.imwrite(str(snap_path), crop_img)
+                                
+                                db_manager.record_attendance(
+                                    name=name,
+                                    identifier=ident,
+                                    mask_status=status_mask,
+                                    compliance=comp,
+                                    confidence=conf,
+                                    snapshot_path=str(snap_path),
+                                    user_id=user_id
+                                )
+                                st.toast(f"✅ Presensi Berhasil: {name} ({comp})", icon="🎉")
+                                render_recent_feed()
                 
                 frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
                 video_screen.image(frame_rgb, channels="RGB", use_container_width=True)
