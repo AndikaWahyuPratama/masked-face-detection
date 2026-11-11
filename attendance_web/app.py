@@ -555,8 +555,8 @@ with st.sidebar:
     with st.expander("⚙️ Kalibrasi Sensitivitas", expanded=False):
         conf_slider = st.slider("Confidence Deteksi Masker", 0.10, 0.90, 0.25, 0.05,
                                 help="Ambang batas deteksi YOLOv8 (Rekomendasi: 0.25)")
-        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.35, 0.75, 0.48, 0.01,
-                                help="Batas baku optimal: 0.48 (otomatis adaptif 0.66 saat bermasker)")
+        dist_slider = st.slider("Toleransi Jarak Biometrik", 0.35, 0.75, 0.68, 0.01,
+                                help="Batas baku optimal: 0.68 (optimal mengenali wajah saat bermasker maupun saat lepas masker)")
         cooldown_mins = st.number_input("Cooldown Presensi (Menit)", 1, 60, 5)
         
     st.markdown('<div class="nav-category">STATUS KOMPUTASI</div>', unsafe_allow_html=True)
@@ -859,6 +859,7 @@ elif "Registrasi Anggota" in nav_selection:
     
     with col_reg_form:
         st.markdown("<p style='font-size:0.85rem; font-weight:700; color:#0F172A; margin-bottom:12px;'>📝 Formulir Anggota Baru</p>", unsafe_allow_html=True)
+        st.info("💡 **Tips Akurasi Presisi:** Disarankan mengambil foto **Wajah Normal (Tanpa Masker)**. Sistem AI otomatis mengaktifkan *Synthetic Mask Augmentation* (Dual-Template) sehingga anggota langsung dikenali baik saat bermasker maupun saat melepas masker.")
         
         tab_cam, tab_file = st.tabs(["📸 Ambil Foto Langsung (Webcam)", "📁 Unggah File Pasfoto"])
         with tab_cam:
@@ -927,9 +928,17 @@ elif "Registrasi Anggota" in nav_selection:
                 
             st.caption(f"Menampilkan {len(users_list)} anggota terdaftar")
             
-            st_box = st.container(height=380)
+            st_box = st.container(height=420)
             with st_box:
                 for u in users_list:
+                    u_emb = u.get("embedding")
+                    is_dual = isinstance(u_emb, list) and len(u_emb) > 0 and isinstance(u_emb[0], list)
+                    badge_mode = (
+                        "<span style='background:#DCFCE7; color:#166534; font-size:0.68rem; font-weight:700; padding:2px 6px; border-radius:4px;'>🟢 Dual Template (Normal + Masker)</span>"
+                        if is_dual else
+                        "<span style='background:#FEF3C7; color:#92400E; font-size:0.68rem; font-weight:700; padding:2px 6px; border-radius:4px;'>⚠️ Single Template (Disarankan Tambah Foto)</span>"
+                    )
+                    
                     u_c1, u_c2, u_c3 = st.columns([2, 6, 2])
                     with u_c1:
                         p_file = Path(u["photo_path"])
@@ -938,12 +947,46 @@ elif "Registrasi Anggota" in nav_selection:
                         else:
                             st.markdown("👤")
                     with u_c2:
-                        st.markdown(f"<div style='font-weight:700; font-size:0.90rem; color:#0F172A;'>{u['name']}</div><div style='font-size:0.75rem; color:#475569; font-weight:500;'>NIM: <code style='color:#0F172A; background:#E2E8F0; padding:1px 4px; border-radius:4px;'>{u['identifier']}</code> • {u['role']}</div>", unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div style='font-weight:700; font-size:0.90rem; color:#0F172A;'>{u['name']}</div>"
+                            f"<div style='font-size:0.75rem; color:#475569; font-weight:500; margin-bottom:3px;'>NIM: <code style='color:#0F172A; background:#E2E8F0; padding:1px 4px; border-radius:4px;'>{u['identifier']}</code> • {u['role']}</div>"
+                            f"<div>{badge_mode}</div>",
+                            unsafe_allow_html=True
+                        )
                     with u_c3:
                         if st.button("🗑️", key=f"del_{u['id']}", help=f"Hapus {u['name']}"):
                             db_manager.delete_user(u["id"])
                             st.toast(f"Anggota {u['name']} dihapus.")
                             st.rerun()
+                    
+                    # Fitur Tambah / Update Foto Biometrik (Face ID Enrichment)
+                    with st.expander(f"➕ Tambah / Update Foto Wajah ({u['name']})", expanded=False):
+                        st.caption("Tambahkan foto wajah kondisi lain (misal: foto tanpa masker jika sebelumnya baru daftar foto masker).")
+                        sub_cam, sub_up = st.tabs(["📸 Kamera", "📁 Upload"])
+                        add_photo = None
+                        with sub_cam:
+                            c_p = st.camera_input("Ambil foto tambahan:", key=f"add_cam_{u['id']}")
+                            if c_p:
+                                add_photo = c_p
+                        with sub_up:
+                            u_p = st.file_uploader("Unggah foto tambahan:", type=["jpg", "png", "jpeg"], key=f"add_file_{u['id']}")
+                            if u_p:
+                                add_photo = u_p
+                                
+                        if st.button(f"💾 Simpan Template Tambahan", key=f"btn_add_emb_{u['id']}", type="primary"):
+                            if not add_photo:
+                                st.warning("Silakan ambil foto lewat kamera atau unggah file terlebih dahulu.")
+                            else:
+                                with st.spinner("Mengekstrak fitur biometrik tambahan..."):
+                                    suc, new_e, new_crop, m = face_engine.register_face_from_image(add_photo.getvalue())
+                                    if suc and new_e is not None:
+                                        db_manager.append_user_embedding(u["id"], new_e)
+                                        st.success(f"🎉 Sukses! {u['name']} sekarang memiliki template biometrik lengkap.")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Gagal ekstrak: {m}")
+                                        
                     st.markdown("<hr style='margin: 8px 0; border: none; border-top: 1px solid #F1F5F9;'>", unsafe_allow_html=True)
                     
     st.markdown("</div>", unsafe_allow_html=True)

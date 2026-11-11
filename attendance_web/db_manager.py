@@ -93,6 +93,45 @@ def update_user_embedding(user_id: int, embedding: List[float]) -> bool:
     finally:
         conn.close()
 
+def append_user_embedding(user_id: int, new_embedding: Any, new_photo_path: Optional[str] = None) -> bool:
+    """Menambahkan template embedding baru ke profil anggota (menjadikannya Dual-Template / Multi-Shot)."""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT embedding, photo_path FROM users WHERE id = ?", (user_id,))
+        row = c.fetchone()
+        if not row:
+            return False
+            
+        cur_emb = json.loads(row["embedding"]) if row["embedding"] else None
+        
+        # Susun daftar multiple templates
+        if cur_emb is None:
+            updated_emb = new_embedding if isinstance(new_embedding, list) and len(new_embedding) > 0 and isinstance(new_embedding[0], list) else [new_embedding]
+        elif isinstance(cur_emb, list) and len(cur_emb) > 0 and isinstance(cur_emb[0], list):
+            if isinstance(new_embedding, list) and len(new_embedding) > 0 and isinstance(new_embedding[0], list):
+                updated_emb = cur_emb + new_embedding
+            else:
+                updated_emb = cur_emb + [new_embedding]
+        else:
+            if isinstance(new_embedding, list) and len(new_embedding) > 0 and isinstance(new_embedding[0], list):
+                updated_emb = [cur_emb] + new_embedding
+            else:
+                updated_emb = [cur_emb, new_embedding]
+                
+        emb_json = json.dumps(updated_emb)
+        if new_photo_path:
+            c.execute("UPDATE users SET embedding = ?, photo_path = ? WHERE id = ?", (emb_json, str(new_photo_path), user_id))
+        else:
+            c.execute("UPDATE users SET embedding = ? WHERE id = ?", (emb_json, user_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"[DB Error append_user_embedding] {e}")
+        return False
+    finally:
+        conn.close()
+
 def get_all_users() -> List[Dict[str, Any]]:
     """Mengambil semua profil anggota terdaftar."""
     conn = get_connection()

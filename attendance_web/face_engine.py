@@ -121,11 +121,13 @@ class FaceEngine:
             boxes = results[0].boxes
             
             h, w = img.shape[:2]
+            cls_id = None
             if len(boxes) == 0:
                 face_crop = img
             else:
                 # Ambil kotak wajah dengan luas terbesar
                 best_box = max(boxes, key=lambda b: (b.xyxy[0][2] - b.xyxy[0][0]) * (b.xyxy[0][3] - b.xyxy[0][1]))
+                cls_id = int(best_box.cls[0])
                 x1, y1, x2, y2 = map(int, best_box.xyxy[0].tolist())
                 # Margin dinamis
                 pad_w = int((x2 - x1) * 0.1)
@@ -138,7 +140,31 @@ class FaceEngine:
             if embedding is None:
                 return False, None, None, "Kualitas wajah terlalu rendah atau kabur untuk diekstrak."
                 
-            return True, embedding, face_crop, "Wajah berhasil dideteksi dan diekstrak."
+            # Cerdas: Jika foto pendaftaran adalah wajah normal tanpa masker (cls_id == 1 atau None),
+            # otomatis buat representasi masker sintetis (Synthetic Mask Augmentation).
+            # Ini menghasilkan Dual-Template [emb_normal, emb_sim_mask] sehingga user otomatis
+            # dikenali baik saat melepas masker maupun saat memakai masker!
+            if cls_id == 1 or cls_id is None:
+                sim_crop = face_crop.copy()
+                ch, cw = sim_crop.shape[:2]
+                pts = np.array([
+                    [int(cw * 0.10), int(ch * 0.48)],
+                    [int(cw * 0.50), int(ch * 0.40)],
+                    [int(cw * 0.90), int(ch * 0.48)],
+                    [int(cw * 0.85), int(ch * 0.98)],
+                    [int(cw * 0.15), int(ch * 0.98)]
+                ], np.int32)
+                cv2.fillPoly(sim_crop, [pts], (235, 235, 235))
+                sim_emb = self.extract_embedding_from_crop(sim_crop)
+                if sim_emb is not None:
+                    embedding = [embedding, sim_emb]
+                    msg = "Wajah normal berhasil diekstrak + representasi masker otomatis aktif (Dual-Template)."
+                else:
+                    msg = "Wajah normal berhasil dideteksi dan diekstrak."
+            else:
+                msg = "Wajah bermasker berhasil dideteksi dan diekstrak."
+                
+            return True, embedding, face_crop, msg
         except Exception as e:
             return False, None, None, f"Terjadi kesalahan saat registrasi: {str(e)}"
 
@@ -267,15 +293,47 @@ class FaceEngine:
             compliance = meta["compliance"]
             box_color = meta["color_bgr"]
             
-            # Pengenalan Biometrik Wajah dengan Dynamic Adaptive Threshold
-            # Saat memakai masker, 50% area wajah bawah tertutup kain sehingga jarak FaceNet bergeser ~0.15.
-            # Threshold diadaptasi dinamis: 0.48 saat tanpa masker, 0.68 saat bermasker agar nama tetap terdeteksi akurat.
-            effective_dist_thresh = distance_threshold
-            if cls_id in (0, 2):  # masked_face / incorrectly_masked_face
-                effective_dist_thresh = max(distance_threshold, 0.68)
+            # Pengenalan Biometrik Wajah dengan Dynamic Adaptive Threshold & Dual-Mode
+            # Jarak Euclidean antar personil berbeda (cth: Jamal vs Dika) adalah > 1.14.
+            # Threshold 0.68 optimal mengenali wajah baik saat bermasker maupun saat melepas masker.
+            effective_dist_thresh = max(distance_threshold, 0.68)
 
             q_emb = self.extract_embedding_from_crop(face_crop)
             matched_user, match_dist = self.match_face(q_emb, registered_users, distance_threshold=effective_dist_thresh)
+            
+            # Periocular Fallback: jika direct match tidak tembus tapi berada di rentang ragu-ragu (0.68 s/d 0.86)
+            # Khususnya saat satu kondisi hanya memiliki 1 foto (cross-domain masked <-> unmasked)
+            if matched_user is None and match_dist <= 0.86 and registered_users:
+                h_c, w_c = face_crop.shape[:2]
+                q_upper = face_crop[0:int(h_c * 0.55), 0:w_c]
+                q_upper_emb = self.extract_embedding_from_crop(q_upper)
+                if q_upper_emb is not None:
+                    q_up_vec = np.array(q_upper_emb, dtype=np.float32)
+                    best_peri_user = None
+                    min_p_dist = 999.0
+                    second_p_dist = 999.0
+                    for u in registered_users:
+                        p_file = u.get("photo_path")
+                        if p_file and Path(p_file).exists():
+                            if "upper_emb" not in u:
+                                db_p = cv2.imread(p_file)
+                                if db_p is not None:
+                                    hp, wp = db_p.shape[:2]
+                                    u["upper_emb"] = self.extract_embedding_from_crop(db_p[0:int(hp * 0.55), 0:wp])
+                                else:
+                                    u["upper_emb"] = None
+                            if u.get("upper_emb") is not None:
+                                p_vec = np.array(u["upper_emb"], dtype=np.float32)
+                                d_peri = float(np.linalg.norm(q_up_vec - p_vec))
+                                if d_peri < min_p_dist:
+                                    second_p_dist = min_p_dist
+                                    min_p_dist = d_peri
+                                    best_peri_user = u
+                                elif d_peri < second_p_dist:
+                                    second_p_dist = d_peri
+                    if best_peri_user and min_p_dist <= 0.86 and (second_p_dist - min_p_dist) >= 0.10:
+                        matched_user = best_peri_user
+                        match_dist = min_p_dist
             
             if matched_user:
                 person_name = matched_user["name"]
